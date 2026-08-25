@@ -1,0 +1,8 @@
+[package]
+name = "content"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+pulldown-cmark = { workspace = true }
