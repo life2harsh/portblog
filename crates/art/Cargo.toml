@@ -1,0 +1,14 @@
+[package]
+name = "art"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+dioxus = { workspace = true }
+web-sys = { workspace = true }
+wasm-bindgen = { workspace = true }
+js-sys = { workspace = true }
+gloo-timers = { workspace = true }
+gloo-events = { workspace = true }
+content = { path = "../../crates/content" }
