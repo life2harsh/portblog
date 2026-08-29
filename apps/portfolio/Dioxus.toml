@@ -1,0 +1,8 @@
+application_id = "life2harsh-portfolio"
+
+[web.app]
+title = "life2harsh"
+base_path = "/"
+
+[web.resource]
+style = ["/assets/style.css"]
