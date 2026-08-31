@@ -1,0 +1,8 @@
+application_id = "life2harsh-blog"
+
+[web.app]
+title = "life2harsh — writing"
+base_path = "/"
+
+[web.resource]
+style = ["/assets/style.css"]

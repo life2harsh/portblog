@@ -1,0 +1,21 @@
+[package]
+name = "blog"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "blog"
+path = "src/main.rs"
+
+[dependencies]
+dioxus = { workspace = true }
+dioxus-router = { workspace = true }
+ui = { path = "../../crates/ui" }
+content = { path = "../../crates/content" }
+wasm-bindgen = { workspace = true }
+web-sys = { workspace = true }
+gloo-events = { workspace = true }
+gloo-utils = { workspace = true }
+log = { workspace = true }
+console_log = { workspace = true }
