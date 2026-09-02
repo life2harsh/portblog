@@ -1,0 +1,7 @@
+/target
+dist
+.dioxus
+Cargo.lock
+*.wasm
+node_modules
+.env

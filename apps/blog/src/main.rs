@@ -40,7 +40,7 @@ fn BlogHome() -> Element {
         let mut nav = nav;
         let mut overlay_open = overlay_open;
         let mut search_open = search_open;
-        let nav_ref = navigator.clone();
+        let nav_ref = navigator;
         use_effect(move || {
             let listener =
                 EventListener::new(&gloo_utils::document().into(), "keydown", move |event| {
@@ -155,7 +155,7 @@ fn BlogHome() -> Element {
                             },
                             on_open: {
                                 let slug = post.slug;
-                                let nav_ref = navigator.clone();
+                                let nav_ref = navigator;
                                 move || { nav_ref.push(Route::Article { slug: slug.to_string() }); }
                             },
                         }
@@ -270,7 +270,7 @@ fn Article(slug: String) -> Element {
     let navigator = use_navigator();
 
     {
-        let nav_ref = navigator.clone();
+        let nav_ref = navigator;
         use_effect(move || {
             let listener =
                 EventListener::new(&gloo_utils::document().into(), "keydown", move |event| {
