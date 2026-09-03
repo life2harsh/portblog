@@ -53,6 +53,7 @@ pub fn Topbar(props: TopbarProps) -> Element {
         header { class: "topbar",
             div { class: "topbar__left",
                 span { class: "topbar__domain", "{props.domain}" }
+                span { class: "topbar__section", "/ {props.site_label}" }
             }
             nav { class: "topbar__right", aria_label: "Site navigation",
                 a {
@@ -71,9 +72,13 @@ pub fn Topbar(props: TopbarProps) -> Element {
 pub fn Footer() -> Element {
     rsx! {
         footer { class: "site-footer",
-            span { class: "footer__copy", "life2harsh" }
+            span { class: "footer__copy", "↑↓ navigate" }
             span { class: "footer__sep", "·" }
-            span { class: "footer__hint", "press ? for shortcuts" }
+            span { class: "footer__hint", "enter open" }
+            span { class: "footer__sep", "·" }
+            span { class: "footer__hint", "a art" }
+            span { class: "footer__sep", "·" }
+            span { class: "footer__hint", "? shortcuts" }
         }
     }
 }
