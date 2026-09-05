@@ -1,8 +1,6 @@
-application_id = "life2harsh-portfolio"
+[application]
+public_dir = "public"
 
 [web.app]
 title = "life2harsh"
 base_path = "/"
-
-[web.resource]
-style = ["/assets/style.css"]
