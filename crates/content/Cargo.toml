@@ -6,3 +6,4 @@ authors.workspace = true
 
 [dependencies]
 pulldown-cmark = { workspace = true }
+serde = { workspace = true }
