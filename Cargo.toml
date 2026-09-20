@@ -5,6 +5,7 @@ members = [
     "crates/ui",
     "crates/content",
     "crates/art",
+    "apps/api",
 ]
 resolver = "2"
 
