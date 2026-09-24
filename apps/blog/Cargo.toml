@@ -11,11 +11,18 @@ path = "src/main.rs"
 [dependencies]
 dioxus = { workspace = true }
 dioxus-router = { workspace = true }
+dioxus-web = { version = "=0.7.0" }
 ui = { path = "../../crates/ui" }
 content = { path = "../../crates/content" }
+art = { path = "../../crates/art" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+gloo-net = { version = "0.6", default-features = false, features = ["http", "json"] }
 wasm-bindgen = { workspace = true }
+js-sys = { workspace = true }
 web-sys = { workspace = true }
 gloo-events = { workspace = true }
+gloo-timers = { workspace = true }
 gloo-utils = { workspace = true }
 log = { workspace = true }
 console_log = { workspace = true }
