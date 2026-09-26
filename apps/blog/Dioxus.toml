@@ -1,8 +1,6 @@
-application_id = "life2harsh-blog"
+[application]
+public_dir = "public"
 
 [web.app]
-title = "life2harsh — writing"
+title = "life2harsh.xyz || blog"
 base_path = "/"
-
-[web.resource]
-style = ["/assets/style.css"]
