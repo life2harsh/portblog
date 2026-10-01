@@ -1,0 +1,23 @@
+[Unit]
+Description=life2harsh blog API
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/blog-api
+EnvironmentFile=/home/ubuntu/blog-api/blog-api.env
+ExecStart=/home/ubuntu/blog-api/blog-api
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/ubuntu/blog-api/data
+MemoryMax=64M
+CPUQuota=25%
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
