@@ -5,3 +5,5 @@ Cargo.lock
 *.wasm
 node_modules
 .env
+apps.zip
+content.zip
