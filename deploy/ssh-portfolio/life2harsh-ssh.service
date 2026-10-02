@@ -1,0 +1,26 @@
+[Unit]
+Description=life2harsh ssh portfolio
+After=network.target life2harsh-blog-api.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/ssh-portfolio
+Environment=SSH_BIND=0.0.0.0:2222
+Environment=SSH_HOST_KEY=/home/ubuntu/ssh-portfolio/data/ssh_host_ed25519_key
+Environment=SSH_JOURNAL=127.0.0.1:7841
+Environment=SSH_MAX_SESSIONS=24
+ExecStart=/home/ubuntu/ssh-portfolio/ssh-portfolio
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/ubuntu/ssh-portfolio/data
+MemoryMax=128M
+CPUQuota=40%
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
