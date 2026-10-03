@@ -685,12 +685,20 @@ fn ProjectNavigator(props: ProjectNavigatorProps) -> Element {
                         .expect("project navigator mount target");
                     let cursor = props.cursor;
                     let mut mounted_list = list_element;
-                    let callback = wasm_bindgen::closure::Closure::once(move || {
-                        center_project_track(&element, cursor());
+                    spawn(async move {
+                        for _ in 0..120 {
+                            let scrollable = element.client_height() > 0
+                                && element.scroll_height() > element.client_height();
+                            if scrollable {
+                                center_project_track(&element, *cursor.peek());
+                                if element.scroll_top() > 0 || *cursor.peek() == 0 {
+                                    break;
+                                }
+                            }
+                            gloo_timers::future::TimeoutFuture::new(16).await;
+                        }
                         *mounted_list.write() = Some(element);
                     });
-                    let _ = gloo_utils::window().request_animation_frame(callback.as_ref().unchecked_ref());
-                    callback.forget();
                 },
                 div { class: "navigator__highlight", aria_hidden: "true",
                     onmounted: move |event| {
@@ -763,7 +771,7 @@ fn scroll_cursor_into_view(element: web_sys::Element, cursor: i64) {
     let selected_bottom = selected_top + row_height;
     let current_top = element.scroll_top() as f64;
     let current_bottom = current_top + viewport_height as f64;
-    let comfort = 0.0;
+    let comfort = row_height * 0.6;
     let target = if selected_top < current_top + comfort {
         (selected_top - comfort).max(0.0)
     } else if selected_bottom > current_bottom - comfort {
