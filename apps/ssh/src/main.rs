@@ -66,12 +66,13 @@ impl Write for Outbound {
 struct Client {
     terminal: SshTerminal,
     app: App,
+    area: Rect,
     started: bool,
 }
 
 impl Client {
     fn render(&mut self) {
-        if !self.started || self.terminal.size().map_or(true, |size| size.width == 0) {
+        if !self.started || self.area.width == 0 || self.area.height == 0 {
             return;
         }
         let app = &mut self.app;
@@ -122,6 +123,7 @@ impl Drop for Connection {
 
 fn resize(client: &mut Client, columns: u32, rows: u32) {
     let area = Rect::new(0, 0, columns.min(500) as u16, rows.min(300) as u16);
+    client.area = area;
     let _ = client.terminal.resize(area);
 }
 
@@ -172,6 +174,7 @@ impl Handler for Connection {
         *slot = Some(Client {
             terminal,
             app: App::new(self.shared.journal.clone()),
+            area: Rect::default(),
             started: false,
         });
         Ok(true)
@@ -219,7 +222,7 @@ impl Handler for Connection {
                 session.channel_failure(channel)?;
                 return Ok(());
             };
-            if client.terminal.size().map_or(true, |size| size.width == 0) {
+            if client.area.width == 0 || client.area.height == 0 {
                 resize(client, 80, 24);
             }
             client.started = true;
