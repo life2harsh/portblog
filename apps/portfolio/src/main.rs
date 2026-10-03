@@ -423,11 +423,7 @@ fn initial_dark_mode() -> bool {
     match stored.as_deref() {
         Some("dark") => true,
         Some("light") => false,
-        _ => window
-            .match_media("(prefers-color-scheme: dark)")
-            .ok()
-            .flatten()
-            .is_some_and(|query| query.matches()),
+        _ => false,
     }
 }
 
