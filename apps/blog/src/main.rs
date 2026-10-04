@@ -138,7 +138,10 @@ fn App() -> Element {
     });
     use_hook(move || journal.refresh());
     use_effect(move || apply_dark_mode((journal.dark)()));
-    rsx! { Router::<Route> {} }
+    rsx! {
+        ui::Sky {}
+        Router::<Route> {}
+    }
 }
 
 fn initial_dark_mode() -> bool {

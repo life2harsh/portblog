@@ -150,3 +150,34 @@ pub fn Prose(children: Element) -> Element {
         }
     }
 }
+
+const STARS: u64 = 160;
+
+fn scatter(seed: u64) -> f64 {
+    let mut n = seed.wrapping_mul(0x9e37_79b9_7f4a_7c15);
+    n ^= n >> 31;
+    n = n.wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    n ^= n >> 29;
+    (n % 10_000) as f64 / 10_000.0
+}
+
+#[component]
+pub fn Sky() -> Element {
+    rsx! {
+        div { class: "sky", "aria-hidden": "true",
+            for index in 0..STARS {
+                i {
+                    key: "{index}",
+                    class: if scatter(index * 7 + 5) < 0.3 { "is-bright" } else { "" },
+                    style: format!(
+                        "left:{:.2}%;top:{:.2}%;animation-duration:{:.1}s;animation-delay:-{:.1}s",
+                        scatter(index * 7 + 1) * 100.0,
+                        scatter(index * 7 + 2) * 100.0,
+                        3.0 + scatter(index * 7 + 3) * 5.0,
+                        scatter(index * 7 + 4) * 8.0,
+                    ),
+                }
+            }
+        }
+    }
+}

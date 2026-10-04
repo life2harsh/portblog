@@ -40,7 +40,7 @@ button:disabled { cursor: default; opacity: .45; }
 .step-in { animation: step-in 360ms steps(4, end) both; }
 @keyframes step-in { from { opacity: 0; clip-path: inset(0 100% 0 0); } to { opacity: 1; clip-path: inset(0); } }
 
-.app { display: flex; flex-direction: column; min-height: 100dvh; max-width: 1180px; margin: 0 auto; border-inline: 1px solid var(--rule); }
+.app { display: flex; flex-direction: column; min-height: 100dvh; max-width: 1180px; margin: 0 auto; border-inline: 1px solid var(--rule); position: relative; z-index: 1; background: var(--bg); }
 .app-header { position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; gap: 2rem; height: 44px; padding: 0 var(--gutter); border-bottom: 1px solid var(--rule); background: var(--bg); font-size: 12px; transition: background-color 400ms var(--ease); }
 .app-header__brand { font-size: 15px; white-space: nowrap; }
 .app-header__brand a:hover { text-decoration: underline; text-underline-offset: 4px; }
@@ -175,3 +175,11 @@ button:disabled { cursor: default; opacity: .45; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }
+
+.sky { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; --star: #000; }
+:root[data-mode="dark"] .sky { --star: #fff; }
+.sky i { position: absolute; width: 2px; height: 2px; background: var(--star); opacity: 0; animation: twinkle 5s steps(1, end) infinite; }
+.sky i.is-bright { animation-name: twinkle-bright; }
+@keyframes twinkle { 0% { opacity: 0; } 30% { opacity: .25; } 50% { opacity: .7; } 70% { opacity: .25; } 85%, 100% { opacity: 0; } }
+@keyframes twinkle-bright { 0% { opacity: 0; box-shadow: none; } 25% { opacity: .35; box-shadow: none; } 40% { opacity: .9; box-shadow: 2px 0 var(--star), -2px 0 var(--star), 0 2px var(--star), 0 -2px var(--star); } 55% { opacity: .35; box-shadow: none; } 70%, 100% { opacity: 0; box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) { .sky i { animation: none; opacity: .35; } }

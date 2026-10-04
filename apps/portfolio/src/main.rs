@@ -21,7 +21,10 @@ fn main() {
 
 #[component]
 fn App() -> Element {
-    rsx! { Router::<Route> {} }
+    rsx! {
+        ui::Sky {}
+        Router::<Route> {}
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Routable)]
