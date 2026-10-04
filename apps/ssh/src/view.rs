@@ -53,7 +53,7 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
             " life2harsh.xyz",
             Style::default().add_modifier(Modifier::BOLD),
         ),
-        Span::styled("  ||  ", Style::default().fg(FAINT)),
+        Span::styled("    ", Style::default().fg(FAINT)),
     ];
     for (index, tab) in Tab::ALL.iter().enumerate() {
         let label = format!(" {} {} ", index + 1, tab.label());
@@ -71,7 +71,7 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(Paragraph::new(Line::from(spans)).block(block), area);
     if area.width > 70 {
         let tag = Paragraph::new(Span::styled(
-            "ssh || life2harsh.xyz ",
+            "ssh.life2harsh.xyz ",
             Style::default().fg(FAINT),
         ))
         .alignment(Alignment::Right);
@@ -191,10 +191,7 @@ fn key_value(key: &str, value: String) -> Line<'static> {
 }
 
 fn draw_identity(frame: &mut Frame, app: &App, area: Rect) {
-    let number = Tab::ALL.iter().position(|tab| *tab == app.tab).unwrap_or(0) + 1;
     let lines = vec![
-        label(format!("{number:02} || 03")),
-        Line::default(),
         Line::from(vec![
             Span::styled(HEADLINE, Style::default().add_modifier(Modifier::BOLD)),
             Span::styled(" █", Style::default().fg(app.accent())),
@@ -203,7 +200,7 @@ fn draw_identity(frame: &mut Frame, app: &App, area: Rect) {
         Line::raw("systems, interfaces, creative tools, and weird experiments."),
         Line::default(),
         key_value("LOCATION", "somewhere on earth".into()),
-        key_value("STACK", "rust || web || systems".into()),
+        key_value("STACK", "rust, web, systems".into()),
         key_value("STATUS", "searching for a W".into()),
     ];
     frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: true }), area);
@@ -262,11 +259,7 @@ fn draw_detail(frame: &mut Frame, app: &App, area: Rect) {
                     "Developer, student and epistemically curious. I like terminal tools, systems software, WebAssembly and anything that turns math into pictures.",
                 ),
                 Line::default(),
-                label(format!(
-                    "EXPERIENCE  {:02} || {:02}",
-                    app.experience + 1,
-                    EXPERIENCES.len()
-                )),
+                label("EXPERIENCE".into()),
                 Line::styled(
                     format!("{} — {}", experience.organization, experience.role),
                     Style::default().add_modifier(Modifier::BOLD),
@@ -275,11 +268,11 @@ fn draw_detail(frame: &mut Frame, app: &App, area: Rect) {
                 Line::raw(experience.description.to_string()),
                 Line::default(),
                 Line::styled(
-                    "github.com/life2harsh  ||  linkedin.com/in/life2harsh  ||  x.com/life2harsh",
+                    "github.com/life2harsh   linkedin.com/in/life2harsh   x.com/life2harsh",
                     Style::default().fg(MUTED),
                 ),
                 Line::styled(
-                    "blog.life2harsh.xyz  ||  jhaharsh29@gmail.com",
+                    "blog.life2harsh.xyz   jhaharsh29@gmail.com",
                     Style::default().fg(MUTED),
                 ),
             ]
@@ -293,7 +286,7 @@ fn draw_detail(frame: &mut Frame, app: &App, area: Rect) {
                 Line::default(),
                 key_value("YEAR", project.year.to_string()),
                 key_value("STATUS", project.status.label().to_string()),
-                key_value("STACK", project.stack.join(" || ")),
+                key_value("STACK", project.stack.join(", ")),
                 Line::default(),
             ];
             if let Some(long) = project.long_description {
@@ -322,7 +315,7 @@ fn draw_detail(frame: &mut Frame, app: &App, area: Rect) {
         Tab::Writing => match (app.selected_entry(), app.status) {
             (Some(entry), _) => vec![
                 label(format!(
-                    "{}  ||  {} MIN READ",
+                    "{}, {} MIN READ",
                     format_date(entry.created_at),
                     entry.reading_minutes()
                 )),
@@ -383,7 +376,7 @@ fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
                             .take(3)
                             .map(|item| item.to_lowercase())
                             .collect::<Vec<_>>()
-                            .join(" || "),
+                            .join(", "),
                         project.year.to_string(),
                     )
                 })
@@ -397,7 +390,7 @@ fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
                 .map(|entry| {
                     (
                         entry.heading(),
-                        entry.tags.join(" || "),
+                        entry.tags.join(", "),
                         format_date(entry.created_at),
                     )
                 })
@@ -466,7 +459,7 @@ fn draw_article(frame: &mut Frame, app: &mut App, area: Rect) {
         height: area.height.saturating_sub(1),
     };
     let mut lines = vec![label(format!(
-        "{}  ||  {} MIN READ",
+        "{}, {} MIN READ",
         format_date(entry.created_at),
         entry.reading_minutes()
     ))];

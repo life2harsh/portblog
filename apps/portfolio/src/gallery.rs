@@ -45,7 +45,7 @@ pub(crate) fn Gallery(project: &'static Project) -> Element {
                 }
             }
             figcaption { class: "gallery__caption",
-                span { "PREVIEW  ||  {label}" }
+                span { "PREVIEW  {label}" }
                 if count > 1 {
                     Stepper { index, count }
                 }
@@ -63,7 +63,7 @@ fn Stepper(index: Signal<usize>, count: usize) -> Element {
     rsx! {
         span { class: "gallery__stepper",
             button { aria_label: "Previous screenshot", onclick: move |_| *index.write() = (index() + count - 1) % count, "←" }
-            span { "{index() + 1:02} || {count:02}" }
+            span { "{index() + 1:02} of {count:02}" }
             button { aria_label: "Next screenshot", onclick: move |_| *index.write() = (index() + 1) % count, "→" }
         }
     }
@@ -114,7 +114,7 @@ fn Viewer(project: &'static Project, index: Signal<usize>, on_close: EventHandle
             aria_label: "{project.name} screenshots",
             onclick: move |_| close(),
             header { class: "viewer__bar",
-                span { "{project.name.to_lowercase()}  ||  screenshots" }
+                span { "{project.name.to_lowercase()}  screenshots" }
                 button { onclick: move |_| close(), span { class: "key-hint", "[esc] " } "close" }
             }
             div {
@@ -150,7 +150,7 @@ fn Viewer(project: &'static Project, index: Signal<usize>, on_close: EventHandle
                     button { onclick: move |_| *index.write() = (index() + 1) % count, "next →" }
                 } else {
                     span {}
-                    span { class: "viewer__ticks", "01 || 01" }
+                    span {}
                     span {}
                 }
             }

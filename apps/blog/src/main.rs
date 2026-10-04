@@ -443,7 +443,7 @@ fn PostCard(
                     " {entry.heading()}"
                 }
                 p { class: "card__meta",
-                    "{format_date(entry.created_at)}  ||  {entry.reading_minutes()} MIN"
+                    "{format_date(entry.created_at)}, {entry.reading_minutes()} MIN"
                     if !entry.published {
                         span { class: "chip chip--draft", "DRAFT" }
                     }
@@ -503,7 +503,7 @@ fn Post(slug: String) -> Element {
             header { class: "post__head",
                 div { class: "post__titles",
                     p { class: "label",
-                        "{format_date(entry.created_at)}  ||  {entry.reading_minutes()} MIN READ"
+                        "{format_date(entry.created_at)}, {entry.reading_minutes()} MIN READ"
                         if !entry.published {
                             span { class: "chip chip--draft", "DRAFT" }
                         }
@@ -805,7 +805,7 @@ fn Composer(slug: Option<String>) -> Element {
                 p { class: "composer__hint key-hint", "ctrl+enter save  ·  esc leave" }
             }
             section { class: "composer__preview",
-                p { class: "label", "PREVIEW  ||  {preview.reading_minutes()} MIN READ" }
+                p { class: "label", "PREVIEW  {preview.reading_minutes()} MIN READ" }
                 h1 { if preview.title.is_some() { "{preview.heading()}" } else { "untitled" } }
                 if let Some(summary) = preview.summary.clone() {
                     p { class: "post__lede", "{summary}" }

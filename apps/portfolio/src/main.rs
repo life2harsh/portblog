@@ -37,16 +37,6 @@ enum View {
     Experience,
 }
 
-impl View {
-    fn number(self) -> usize {
-        match self {
-            Self::About => 1,
-            Self::Projects => 2,
-            Self::Experience => 3,
-        }
-    }
-}
-
 const PROJECT_LOOP_COPIES: i64 = 9;
 const PROJECT_LOOP_CENTER: i64 = PROJECT_LOOP_COPIES / 2;
 
@@ -305,7 +295,7 @@ fn Home() -> Element {
             section { class: "app-main",
                 section { class: "shell-left",
                     div { class: "left-upper",
-                        IdentityBlock { active }
+                        IdentityBlock {}
                         canvas::ArtCanvas { config: art, accent: theme().art_tint(), ink: if dark() { DARK_INK } else { LIGHT_INK } }
                     }
                     div {
@@ -490,16 +480,10 @@ fn kolkata_clock() -> String {
     format!("{:02}:{:02}", date.get_utc_hours(), date.get_utc_minutes())
 }
 
-#[derive(Clone, PartialEq, Props)]
-struct IdentityBlockProps {
-    active: View,
-}
-
 #[component]
-fn IdentityBlock(props: IdentityBlockProps) -> Element {
+fn IdentityBlock() -> Element {
     rsx! {
         section { class: "identity",
-            p { class: "micro", "{props.active.number():02}  ||  03" }
             h1 { class: "identity__headline",
                 "i make software and other things computers probably didn’t ask for."
                 span { class: "block-cursor", aria_hidden: "true" }
@@ -508,7 +492,7 @@ fn IdentityBlock(props: IdentityBlockProps) -> Element {
             p { class: "identity__copy", "systems, interfaces, creative tools, and weird experiments." }
             dl { class: "kv",
                 div { dt { "LOCATION" } dd { "somewhere on earth" } }
-                div { dt { "STACK" } dd { "rust || web || systems" } }
+                div { dt { "STACK" } dd { "rust, web, systems" } }
                 div { dt { "STATUS" } dd { "searching for a W" } }
             }
         }
@@ -609,7 +593,7 @@ fn ExperienceDetail(props: ExperienceDetailProps) -> Element {
         article { class: "detail",
             div { class: "detail__main",
                 button { class: "detail__back", onclick: move |_| nav::back_to(0), "← go back" }
-                p { class: "label", "EXPERIENCE  {props.index + 1:02} || {EXPERIENCES.len():02}" }
+                p { class: "label", "EXPERIENCE" }
                 h2 { class: "step-in", "{item.organization.to_lowercase()}" }
                 p { class: "detail__summary", "{item.role}" }
                 dl { class: "kv kv--detail",
@@ -617,7 +601,7 @@ fn ExperienceDetail(props: ExperienceDetailProps) -> Element {
                     div { dt { "STACK" } dd { class: "chips", for tech in item.stack { span { class: "stack-chip", "{tech}" } } } }
                 }
                 p { class: "detail__long", "{item.description}" }
-                p { class: "detail__hint key-hint", "j || k  cycle experience  ·  esc  back" }
+                p { class: "detail__hint key-hint", "j k  cycle experience  ·  esc  back" }
             }
         }
     }
@@ -798,7 +782,7 @@ fn ProjectRow(props: ProjectRowProps) -> Element {
         .take(3)
         .map(|item| item.to_lowercase())
         .collect::<Vec<_>>()
-        .join(" || ");
+        .join(", ");
     rsx! {
         button {
             id: "project-row-{props.cursor}",
