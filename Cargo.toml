@@ -41,6 +41,7 @@ features = [
     "Element",
     "HtmlElement",
     "HtmlCanvasElement",
+    "CssStyleDeclaration",
     "HtmlImageElement",
     "HtmlAudioElement",
     "HtmlMediaElement",

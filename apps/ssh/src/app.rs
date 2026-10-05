@@ -1,5 +1,5 @@
 use art::Field;
-use content::{ArtConfig, EXPERIENCES, Entry, PROJECTS, ShapeFamily};
+use content::{ArtConfig, Design, EXPERIENCES, Entry, PROJECTS};
 use ratatui::style::Color;
 
 use crate::journal::{Shared, Status};
@@ -71,7 +71,7 @@ impl App {
             scroll: 0,
             theme: 2,
             help: false,
-            field: Field::new(about_art()),
+            field: Field::with_resolution(about_art(), 52, 24),
             entries: Vec::new(),
             status: Status::Loading,
             journal,
@@ -176,7 +176,7 @@ impl App {
     fn art_target(&self) -> ArtConfig {
         match self.tab {
             Tab::About => about_art(),
-            Tab::Projects => PROJECTS[self.project].art.clone(),
+            Tab::Projects => PROJECTS[self.project].art,
             Tab::Writing => self
                 .selected_entry()
                 .map_or_else(about_art, |entry| entry_art(entry.seed())),
@@ -223,41 +223,14 @@ impl App {
 
 pub fn about_art() -> ArtConfig {
     ArtConfig {
-        shape: ShapeFamily::Knot,
-        rotation_x: 0.52,
-        rotation_y: -0.24,
-        twist: 2.1,
-        radius: 1.0,
-        secondary_radius: 0.32,
-        density: 72,
-        warp: 0.12,
-        symmetry: 3.0,
-        phase: 0.2,
-        scale: 0.94,
+        design: Design::Burst,
         seed: 84921,
     }
 }
 
 fn entry_art(seed: u64) -> ArtConfig {
-    let unit = |shift: u32| ((seed >> shift) & 0xff) as f64 / 255.0;
-    let families = [
-        ShapeFamily::Knot,
-        ShapeFamily::Orbit,
-        ShapeFamily::Lattice,
-        ShapeFamily::Ribbon,
-    ];
     ArtConfig {
-        shape: families[(seed % 4) as usize],
-        rotation_x: -0.6 + unit(8) * 1.3,
-        rotation_y: -0.7 + unit(16) * 1.4,
-        twist: 1.0 + unit(24) * 3.0,
-        radius: 0.9 + unit(32) * 0.25,
-        secondary_radius: 0.26 + unit(40) * 0.2,
-        density: 60,
-        warp: 0.08 + unit(48) * 0.3,
-        symmetry: 2.0 + (unit(56) * 4.0).round(),
-        phase: unit(4) * 3.0,
-        scale: 0.95,
+        design: Design::ALL[(seed % Design::ALL.len() as u64) as usize],
         seed: seed % 99_991,
     }
 }

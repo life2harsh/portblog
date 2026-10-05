@@ -1,4 +1,4 @@
-use content::{ArtConfig, EXPERIENCES, Experience, PROJECTS, Project, ShapeFamily};
+use content::{ArtConfig, Design, EXPERIENCES, Experience, PROJECTS, Project};
 use dioxus::prelude::*;
 use dioxus_web::WebEventExt;
 use gloo_events::EventListener;
@@ -279,8 +279,8 @@ fn Home() -> Element {
     let displayed = detail_display();
     let art = match active {
         View::About => about_art(),
-        View::Projects => selected_project.art.clone(),
-        View::Experience => selected_experience.art.clone(),
+        View::Projects => selected_project.art,
+        View::Experience => selected_experience.art,
     };
     let detail_class = match detail_motion() {
         DetailMotion::Still => "left-detail",
@@ -438,17 +438,7 @@ fn apply_dark_mode(dark: bool) {
 
 fn about_art() -> ArtConfig {
     ArtConfig {
-        shape: ShapeFamily::Knot,
-        rotation_x: 0.52,
-        rotation_y: -0.24,
-        twist: 2.1,
-        radius: 1.0,
-        secondary_radius: 0.32,
-        density: 72,
-        warp: 0.12,
-        symmetry: 3.0,
-        phase: 0.2,
-        scale: 0.94,
+        design: Design::Burst,
         seed: 84921,
     }
 }

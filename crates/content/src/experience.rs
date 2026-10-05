@@ -1,4 +1,4 @@
-use crate::project::{ArtConfig, ShapeFamily};
+use crate::project::{ArtConfig, Design};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Experience {
@@ -18,17 +18,7 @@ pub static EXPERIENCES: &[Experience] = &[
         stack: &["Flutter", "Three.js", "Prisma", "CommonJS"],
         description: "Writing end-to-end, integration, and unit tests for game flows; fixing Flutter mobile issues and contributing Blender/Three.js landing-page assets and interactions.",
         art: ArtConfig {
-            shape: ShapeFamily::Orbit,
-            rotation_x: 0.62,
-            rotation_y: 0.18,
-            twist: 2.4,
-            radius: 1.02,
-            secondary_radius: 0.34,
-            density: 48,
-            warp: 0.18,
-            symmetry: 6.0,
-            phase: 0.8,
-            scale: 1.0,
+            design: Design::Cube,
             seed: 611,
         },
     },
@@ -47,17 +37,7 @@ pub static EXPERIENCES: &[Experience] = &[
         ],
         description: "Shipped authentication and session infrastructure, production migrations, transaction-safe repair tooling, CI safeguards, and AI tutoring workflows for a multi-tenant ed-tech platform.",
         art: ArtConfig {
-            shape: ShapeFamily::Lattice,
-            rotation_x: -0.46,
-            rotation_y: 0.54,
-            twist: 1.6,
-            radius: 1.14,
-            secondary_radius: 0.43,
-            density: 60,
-            warp: 0.25,
-            symmetry: 4.0,
-            phase: 1.7,
-            scale: 0.96,
+            design: Design::Helix,
             seed: 2084,
         },
     },
@@ -68,17 +48,7 @@ pub static EXPERIENCES: &[Experience] = &[
         stack: &["Next.js", "React", "Supabase", "SSE", "Web Push"],
         description: "Developing a multi-tenant real-time ordering platform with AI recommendations, tenant-aware routing, live order updates, push notifications, and load-tested checkout flows.",
         art: ArtConfig {
-            shape: ShapeFamily::Ribbon,
-            rotation_x: 0.22,
-            rotation_y: -0.48,
-            twist: 3.2,
-            radius: 0.92,
-            secondary_radius: 0.31,
-            density: 56,
-            warp: 0.38,
-            symmetry: 5.0,
-            phase: 2.6,
-            scale: 1.06,
+            design: Design::Stacks,
             seed: 4402,
         },
     },

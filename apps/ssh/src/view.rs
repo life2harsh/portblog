@@ -4,7 +4,7 @@ use ratatui::layout::{Alignment, Constraint, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::symbols::Marker;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::canvas::{Canvas, Line as CanvasLine};
+use ratatui::widgets::canvas::{Canvas, Points};
 use ratatui::widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap};
 
 use crate::app::{App, Tab};
@@ -213,30 +213,35 @@ fn draw_art(frame: &mut Frame, app: &App, area: Rect) {
     let width = f64::from(area.width) * 2.0;
     let height = f64::from(area.height) * 4.0;
     let accent = app.accent();
-    let rings = app.field.rings(width, height);
+    let art = app.field.frame(width, height);
+    let (columns, rows) = (width as usize, height as usize);
+    let grid = art::raster(&art, columns, rows);
+    let mut ink = Vec::new();
+    let mut tint = Vec::new();
+    for (index, cell) in grid.iter().enumerate() {
+        let point = (
+            (index % columns) as f64 + 0.5,
+            height - (index / columns) as f64 - 0.5,
+        );
+        match cell {
+            1 => ink.push(point),
+            2 => tint.push(point),
+            _ => {}
+        }
+    }
     let canvas = Canvas::default()
         .marker(Marker::Braille)
         .x_bounds([0.0, width])
         .y_bounds([0.0, height])
         .paint(move |context| {
-            for ring in rings.iter().step_by(7) {
-                let color = if ring.mix > 0.55 {
-                    accent
-                } else if ring.depth > 0.5 {
-                    MUTED
-                } else {
-                    FAINT
-                };
-                for pair in ring.points.windows(2) {
-                    context.draw(&CanvasLine {
-                        x1: pair[0].0,
-                        y1: height - pair[0].1,
-                        x2: pair[1].0,
-                        y2: height - pair[1].1,
-                        color,
-                    });
-                }
-            }
+            context.draw(&Points {
+                coords: &ink,
+                color: MUTED,
+            });
+            context.draw(&Points {
+                coords: &tint,
+                color: accent,
+            });
         });
     frame.render_widget(canvas, area);
 }

@@ -20,7 +20,7 @@ pub fn ArtCanvas(props: ArtCanvasProps) -> Element {
 
     use_effect(use_reactive!(|props| {
         if let Some(engine) = engine.write().as_mut() {
-            engine.transition_to(props.config.clone());
+            engine.transition_to(props.config);
             engine.set_accent(props.accent);
             engine.set_ink(props.ink);
         }
@@ -64,7 +64,7 @@ pub fn ArtCanvas(props: ArtCanvasProps) -> Element {
                         .as_web_event()
                         .dyn_into()
                         .expect("canvas mount target");
-                    let mut created = ArtEngine::new(&canvas, props.config.clone(), props.accent);
+                    let mut created = ArtEngine::new(&canvas, props.config, props.accent);
                     created.set_still(reduced_motion());
                     created.set_ink(props.ink);
                     *engine.write() = Some(created);
