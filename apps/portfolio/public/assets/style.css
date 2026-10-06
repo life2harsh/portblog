@@ -66,16 +66,13 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; text-a
 .kv dt { color: var(--muted); font-family: var(--pixel); font-size: 11px; letter-spacing: .04em; }
 .kv dd { margin: 0; }
 
-.art { position: relative; min-width: 0; min-height: 0; margin: 0; }
+.art { position: relative; min-width: 0; min-height: 0; margin: 0; padding: clamp(1.2rem, 3.4vh, 2.4rem) var(--gutter) clamp(1rem, 2.4vh, 1.6rem) clamp(.6rem, 1.4vw, 1.4rem); }
+.art__window { display: grid; grid-template-rows: 1.45rem minmax(0, 1fr); height: 100%; border: 1px solid var(--rule); background: var(--bg); }
+.art__bar { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .6rem; padding: 0 .45rem; border-bottom: 1px solid var(--rule); background: var(--hair); color: var(--ink); }
+.art__figure { font-family: var(--pixel); font-size: 11px; letter-spacing: .06em; text-align: center; white-space: pre; }
+.art__icon { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1; shape-rendering: crispEdges; }
+.art__body { position: relative; min-height: 0; overflow: hidden; background-image: radial-gradient(circle at center, var(--faint) .7px, transparent 1.1px); background-size: 16px 16px; background-position: 8px 8px; }
 .art__canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-.art__label { position: absolute; color: var(--muted); font-size: 10px; letter-spacing: .08em; line-height: 1.35; }
-.art__label--top { top: 2.6rem; right: 2.2rem; }
-.art__mark { position: absolute; color: var(--muted); font-size: 12px; line-height: 1; }
-.art__mark--a { top: 3.6rem; left: 12%; }
-.art__mark--b { top: 4.2rem; right: 2.4rem; }
-.art__mark--c { right: 3.6rem; bottom: 34%; }
-.art__mark--d { bottom: 2.2rem; left: 2%; }
-.art__tick { position: absolute; top: 6.5rem; right: 2.7rem; height: 4.5rem; border-left: 1px dashed var(--faint); }
 
 .left-detail { position: relative; min-height: 0; overflow: hidden; margin: 0 var(--gutter); border-top: 1px solid var(--rule); }
 .detail-stage { height: 100%; overflow: auto; scrollbar-width: none; }
@@ -207,8 +204,7 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; text-a
   .identity { padding: 1.6rem 1rem .4rem; }
   .identity__headline { margin: 1rem 0 1.2rem; font-size: clamp(25px, 7.4vw, 32px); }
   .identity__copy { max-width: none; margin-bottom: 1.4rem; }
-  .art { height: min(70vw, 360px); margin: .4rem 0; }
-  .art__label, .art__mark, .art__tick { display: none; }
+  .art { height: min(78vw, 400px); margin: .4rem 0; padding: .4rem 1rem; }
   .left-detail { margin: 0 1rem; scroll-margin-top: 5.5rem; }
   .detail-stage { overflow: visible; }
   .detail { grid-template-columns: 1fr; gap: 1.4rem; padding-bottom: 1.8rem; }

@@ -40,6 +40,16 @@ enum View {
     Experience,
 }
 
+impl View {
+    fn number(self) -> usize {
+        match self {
+            Self::About => 1,
+            Self::Projects => 2,
+            Self::Experience => 3,
+        }
+    }
+}
+
 const PROJECT_LOOP_COPIES: i64 = 9;
 const PROJECT_LOOP_CENTER: i64 = PROJECT_LOOP_COPIES / 2;
 
@@ -277,10 +287,16 @@ fn Home() -> Element {
     let selected_project = &PROJECTS[project_index()];
     let selected_experience = &EXPERIENCES[experience_index()];
     let displayed = detail_display();
-    let art = match active {
-        View::About => about_art(),
-        View::Projects => selected_project.art,
-        View::Experience => selected_experience.art,
+    let (art, figure) = match active {
+        View::About => (about_art(), format!("{}", active.number())),
+        View::Projects => (
+            selected_project.art,
+            format!("{}.{}", active.number(), project_index() + 1),
+        ),
+        View::Experience => (
+            selected_experience.art,
+            format!("{}.{}", active.number(), experience_index() + 1),
+        ),
     };
     let detail_class = match detail_motion() {
         DetailMotion::Still => "left-detail",
@@ -299,7 +315,7 @@ fn Home() -> Element {
                 section { class: "shell-left",
                     div { class: "left-upper",
                         IdentityBlock {}
-                        canvas::ArtCanvas { config: art, accent: theme().art_tint(), ink: if dark() { DARK_INK } else { LIGHT_INK } }
+                        canvas::ArtCanvas { config: art, figure, accent: theme().art_tint(), ink: if dark() { DARK_INK } else { LIGHT_INK } }
                     }
                     div {
                         class: "{detail_class}",

@@ -8,6 +8,7 @@ use web_sys::HtmlCanvasElement;
 #[derive(Clone, PartialEq, Props)]
 pub struct ArtCanvasProps {
     pub config: ArtConfig,
+    pub figure: String,
     pub accent: &'static str,
     pub ink: &'static str,
 }
@@ -16,7 +17,6 @@ pub struct ArtCanvasProps {
 pub fn ArtCanvas(props: ArtCanvasProps) -> Element {
     let engine: Signal<Option<ArtEngine>> = use_signal(|| None);
     let mut engine = engine;
-    let seed = props.config.seed;
 
     use_effect(use_reactive!(|props| {
         if let Some(engine) = engine.write().as_mut() {
@@ -49,26 +49,31 @@ pub fn ArtCanvas(props: ArtCanvasProps) -> Element {
 
     rsx! {
         figure { class: "art", aria_label: "Generative ring sculpture",
-            div { class: "art__label art__label--top", "GENERATIVE FIELD" br {} "SEED {seed:05}" }
-            span { class: "art__mark art__mark--a", "+" }
-            span { class: "art__mark art__mark--b", "+" }
-            span { class: "art__mark art__mark--c", "+" }
-            span { class: "art__mark art__mark--d", "+" }
-            span { class: "art__tick" }
-            canvas {
-                class: "art__canvas",
-                width: 960,
-                height: 720,
-                onmounted: move |event| {
-                    let canvas: HtmlCanvasElement = event
-                        .as_web_event()
-                        .dyn_into()
-                        .expect("canvas mount target");
-                    let mut created = ArtEngine::new(&canvas, props.config, props.accent);
-                    created.set_still(reduced_motion());
-                    created.set_ink(props.ink);
-                    *engine.write() = Some(created);
-                },
+            div { class: "art__window",
+                div { class: "art__bar",
+                    svg { class: "art__icon", view_box: "0 0 10 10", "aria-hidden": "true",
+                        path { d: "M0.5 0.5h9v9h-9z M2.5 3l2 2-2 2 M5.5 7h2" }
+                    }
+                    span { class: "art__figure", "[ FIG. {props.figure} ]" }
+                    svg { class: "art__icon", view_box: "0 0 10 10", "aria-hidden": "true",
+                        path { d: "M1 2.5h8 M1 5h8 M1 7.5h8 M3 1.5v2 M7 4v2 M4.5 6.5v2" }
+                    }
+                }
+                div { class: "art__body",
+                    canvas {
+                        class: "art__canvas",
+                        onmounted: move |event| {
+                            let canvas: HtmlCanvasElement = event
+                                .as_web_event()
+                                .dyn_into()
+                                .expect("canvas mount target");
+                            let mut created = ArtEngine::new(&canvas, props.config, props.accent);
+                            created.set_still(reduced_motion());
+                            created.set_ink(props.ink);
+                            *engine.write() = Some(created);
+                        },
+                    }
+                }
             }
         }
     }
