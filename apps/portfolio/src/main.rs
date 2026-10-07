@@ -627,6 +627,7 @@ struct ProjectNavigatorProps {
 fn ProjectNavigator(props: ProjectNavigatorProps) -> Element {
     let list_element = use_signal(|| None::<web_sys::Element>);
     let mut plate_element = use_signal(|| None::<web_sys::Element>);
+    let mut wrapped = use_signal(|| false);
     let selected_cursor = (props.cursor)();
     {
         let mut cursor = props.cursor;
@@ -635,6 +636,10 @@ fn ProjectNavigator(props: ProjectNavigatorProps) -> Element {
                 return;
             };
             let selected = cursor();
+            if *wrapped.peek() {
+                *wrapped.write() = false;
+                return;
+            }
             if let Some(rebased) = rebase_project_track(&element, selected) {
                 *cursor.write() = rebased;
                 return;
@@ -667,6 +672,21 @@ fn ProjectNavigator(props: ProjectNavigatorProps) -> Element {
                 span { "{PROJECTS.len():02} ITEMS" }
             }
             div { class: "navigator__list", role: "listbox", aria_label: "Projects",
+                onscroll: move |_| {
+                    let Some(element) = list_element.peek().clone() else {
+                        return;
+                    };
+                    if element.get_attribute("data-scroll-running").is_some() {
+                        return;
+                    }
+                    let mut cursor = props.cursor;
+                    if let Some(shift) = wrap_project_track(&element) {
+                        *wrapped.write() = true;
+                        let total = PROJECTS.len() as i64 * PROJECT_LOOP_COPIES;
+                        let next = (*cursor.peek() + shift).rem_euclid(total);
+                        *cursor.write() = next;
+                    }
+                },
                 onmounted: move |event| {
                     let element: web_sys::Element = event
                         .as_web_event()
@@ -725,6 +745,27 @@ fn center_project_track(element: &web_sys::Element, cursor: i64) {
     let target =
         (row_height * cursor as f64).clamp(0.0, (total_height - viewport_height).max(0) as f64);
     element.set_scroll_top(target.round() as i32);
+}
+
+fn wrap_project_track(element: &web_sys::Element) -> Option<i64> {
+    let project_count = PROJECTS.len() as i64;
+    let row_height = element.scroll_height() as f64 / (project_count * PROJECT_LOOP_COPIES) as f64;
+    if row_height <= 0.0 || element.client_height() == 0 {
+        return None;
+    }
+    let period = row_height * project_count as f64;
+    let top = element.scroll_top() as f64;
+    let bottom_limit = (element.scroll_height() - element.client_height()) as f64 - period * 1.5;
+    let copies = if top < period * 1.5 {
+        PROJECT_LOOP_CENTER - 1
+    } else if top > bottom_limit {
+        -(PROJECT_LOOP_CENTER - 1)
+    } else {
+        return None;
+    };
+    motion::cancel_scroll(element);
+    element.set_scroll_top((top + period * copies as f64).round() as i32);
+    Some(project_count * copies)
 }
 
 fn rebase_project_track(element: &web_sys::Element, cursor: i64) -> Option<i64> {

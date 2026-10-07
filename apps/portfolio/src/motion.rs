@@ -12,8 +12,11 @@ pub fn retarget_highlight(plate: &Element, row: &Element) {
     };
     let target_y = row.offset_top() as f64;
     let target_height = row.offset_height() as f64;
+    let leap = (attribute_number(plate, "data-highlight-y") - target_y).abs() > 900.0;
 
-    if prefers_reduced_motion() || plate.get_attribute("data-highlight-y").is_none() {
+    if prefers_reduced_motion() || leap || plate.get_attribute("data-highlight-y").is_none() {
+        let _ = plate.set_attribute("data-highlight-target-y", &target_y.to_string());
+        let _ = plate.set_attribute("data-highlight-target-height", &target_height.to_string());
         set_highlight(plate, target_y, target_height);
         return;
     }
@@ -32,10 +35,15 @@ pub fn retarget_scroll(element: &Element, target: f64) {
         return;
     }
     let _ = element.set_attribute("data-scroll-target", &target.to_string());
+    let _ = element.set_attribute("data-scroll-set", &element.scroll_top().to_string());
     if element.get_attribute("data-scroll-running").is_none() {
         let _ = element.set_attribute("data-scroll-running", "true");
         scroll_frame(element.clone(), now());
     }
+}
+
+pub fn cancel_scroll(element: &Element) {
+    let _ = element.remove_attribute("data-scroll-running");
 }
 
 fn highlight_frame(plate: Element, previous_time: f64) {
@@ -68,13 +76,25 @@ fn scroll_frame(element: Element, previous_time: f64) {
         let next_element = element.clone();
         let time = now();
         let dt = ((time - previous_time) / 1_000.0).clamp(0.0, 0.05);
+        if element.get_attribute("data-scroll-running").is_none() {
+            return;
+        }
         let target = attribute_number(&element, "data-scroll-target");
         let current = element.scroll_top() as f64;
-        let next = current + (target - current) * (1.0 - (-SCROLL_SPEED * dt).exp());
+        if (current - attribute_number(&element, "data-scroll-set")).abs() > 2.0 {
+            let _ = element.remove_attribute("data-scroll-running");
+            return;
+        }
+        let step = (target - current) * (1.0 - (-SCROLL_SPEED * dt).exp());
+        let next = if step.abs() < 1.0 {
+            target
+        } else {
+            current + step
+        };
         element.set_scroll_top(next.round() as i32);
+        let _ = element.set_attribute("data-scroll-set", &element.scroll_top().to_string());
 
-        if (target - next).abs() < 0.75 {
-            element.set_scroll_top(target.round() as i32);
+        if (target - next).abs() < 1.0 {
             let _ = element.remove_attribute("data-scroll-running");
         } else {
             scroll_frame(next_element, time);
