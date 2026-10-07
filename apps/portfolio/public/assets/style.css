@@ -108,6 +108,9 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; text-a
 .gallery__stepper { display: inline-flex; align-items: center; gap: .7rem; color: var(--ink); }
 .gallery__stepper button { padding: 0 .2rem; font-size: 12px; }
 .gallery__stepper button:hover { background: var(--acid); color: var(--acid-ink); }
+.gallery__dots { display: inline-flex; gap: 3px; }
+.gallery__dots i { width: 5px; height: 5px; border: 1px solid var(--ink); transition: background-color 160ms steps(2, end); }
+.gallery__dots i.is-current { background: var(--ink); }
 
 .viewer { position: fixed; inset: 0; z-index: 50; touch-action: none; overscroll-behavior: contain; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--bg); animation: viewer-in 220ms steps(4, end) both; }
 @keyframes viewer-in { from { opacity: 0; clip-path: inset(0 0 100% 0); } to { opacity: 1; clip-path: inset(0); } }

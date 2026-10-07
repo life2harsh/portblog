@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use content::Project;
 use dioxus::prelude::*;
-use gloo_events::EventListener;
+use gloo_events::{EventListener, EventListenerOptions};
 use wasm_bindgen::JsCast;
 
 use crate::preview::DitherPreview;
@@ -63,7 +63,11 @@ fn Stepper(index: Signal<usize>, count: usize) -> Element {
     rsx! {
         span { class: "gallery__stepper",
             button { aria_label: "Previous screenshot", onclick: move |_| *index.write() = (index() + count - 1) % count, "←" }
-            span { "{index() + 1:02} of {count:02}" }
+            span { class: "gallery__dots", aria_label: "Screenshot {index() + 1} of {count}",
+                for dot in 0..count {
+                    i { class: if dot == index() % count { "is-current" } else { "" } }
+                }
+            }
             button { aria_label: "Next screenshot", onclick: move |_| *index.write() = (index() + 1) % count, "→" }
         }
     }
@@ -91,18 +95,23 @@ fn Viewer(project: &'static Project, index: Signal<usize>, on_close: EventHandle
                     on_close.call(());
                 }
             }),
-            EventListener::new(&gloo_utils::document(), "keydown", move |event| {
-                let Some(key) = event.dyn_ref::<web_sys::KeyboardEvent>() else {
-                    return;
-                };
-                match key.key().as_str() {
-                    "Escape" | "q" => close(),
-                    "ArrowLeft" | "h" | "k" => *index.write() = (index() + count - 1) % count,
-                    "ArrowRight" | "l" | "j" => *index.write() = (index() + 1) % count,
-                    _ => return,
-                }
-                key.prevent_default();
-            }),
+            EventListener::new_with_options(
+                &gloo_utils::document(),
+                "keydown",
+                EventListenerOptions::enable_prevent_default(),
+                move |event| {
+                    let Some(key) = event.dyn_ref::<web_sys::KeyboardEvent>() else {
+                        return;
+                    };
+                    match key.key().as_str() {
+                        "Escape" | "q" => close(),
+                        "ArrowLeft" | "h" | "k" => *index.write() = (index() + count - 1) % count,
+                        "ArrowRight" | "l" | "j" => *index.write() = (index() + 1) % count,
+                        _ => return,
+                    }
+                    key.prevent_default();
+                },
+            ),
         ))
     });
 
