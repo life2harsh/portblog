@@ -1,7 +1,7 @@
 use content::{ArtConfig, Design, EXPERIENCES, Experience, PROJECTS, Project, STACK, Tool};
 use dioxus::prelude::*;
 use dioxus_web::WebEventExt;
-use gloo_events::EventListener;
+use gloo_events::{EventListener, EventListenerOptions};
 use gloo_timers::callback::{Interval, Timeout};
 use ui::Meta;
 use wasm_bindgen::JsCast;
@@ -226,8 +226,11 @@ fn Home() -> Element {
         let mut theme = theme;
         let mut dark = dark;
         use_effect(move || {
-            let listener =
-                EventListener::new(&gloo_utils::document().into(), "keydown", move |event| {
+            let listener = EventListener::new_with_options(
+                &gloo_utils::document().into(),
+                "keydown",
+                EventListenerOptions::enable_prevent_default(),
+                move |event| {
                     let key = event
                         .dyn_ref::<web_sys::KeyboardEvent>()
                         .expect("keyboard event");
@@ -267,10 +270,12 @@ fn Home() -> Element {
                         "j" | "ArrowDown" if matches!(view(), View::Stack | View::Tool) => {
                             let next = (stack_index() + 1) % STACK.len();
                             *stack_index.write() = next;
+                            follow_row(&format!("stack-row-{next}"));
                         }
                         "k" | "ArrowUp" if matches!(view(), View::Stack | View::Tool) => {
                             let next = (stack_index() + STACK.len() - 1) % STACK.len();
                             *stack_index.write() = next;
+                            follow_row(&format!("stack-row-{next}"));
                         }
                         "j" | "ArrowDown" => {
                             let next = project_cursor() + 1;
@@ -303,8 +308,11 @@ fn Home() -> Element {
                         "Escape" => *view.write() = View::About,
                         _ => return,
                     }
-                    key.prevent_default();
-                });
+                    if matches!(key.key().as_str(), "ArrowUp" | "ArrowDown") {
+                        key.prevent_default();
+                    }
+                },
+            );
             std::mem::forget(listener);
         });
     }
@@ -461,6 +469,48 @@ fn compact_layout() -> bool {
         .ok()
         .flatten()
         .is_some_and(|query| query.matches())
+}
+
+fn follow_row(id: &str) {
+    let Some(row) = gloo_utils::document().get_element_by_id(id) else {
+        return;
+    };
+    let margin = 24.0;
+    let rect = row.get_bounding_client_rect();
+    let stage = row.closest(".detail-stage").ok().flatten();
+    let row_top = match &stage {
+        Some(stage) if row.previous_element_sibling().is_none() => {
+            stage.get_bounding_client_rect().top() - stage.scroll_top() as f64 + margin
+        }
+        _ => rect.top(),
+    };
+    if let Some(stage) = stage
+        && stage.scroll_height() > stage.client_height()
+    {
+        let frame = stage.get_bounding_client_rect();
+        let top = row_top - frame.top();
+        let bottom = rect.bottom() - frame.top();
+        let height = stage.client_height() as f64;
+        let current = stage.scroll_top() as f64;
+        if top < margin {
+            stage.set_scroll_top((current + top - margin).max(0.0).round() as i32);
+        } else if bottom > height - margin {
+            stage.set_scroll_top((current + bottom - height + margin).round() as i32);
+        }
+        return;
+    }
+    let window = gloo_utils::window();
+    let viewport = window
+        .inner_height()
+        .ok()
+        .and_then(|value| value.as_f64())
+        .unwrap_or(0.0);
+    let (header, footer) = (90.0, 60.0);
+    if row_top < header {
+        window.scroll_by_with_x_and_y(0.0, row_top - header);
+    } else if rect.bottom() > viewport - footer {
+        window.scroll_by_with_x_and_y(0.0, rect.bottom() - viewport + footer);
+    }
 }
 
 fn reveal_detail() {
