@@ -87,6 +87,8 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; text-a
 .kv--detail div { grid-template-columns: 5.5rem 1fr; }
 .chips { display: flex; flex-wrap: wrap; gap: .5rem; }
 .stack-chip { padding: .12rem .55rem; border: 1px solid var(--rule); font-size: 12px; }
+.stack-chip--link { color: inherit; cursor: pointer; transition: border-color 160ms steps(2, end), color 160ms steps(2, end); }
+.stack-chip--link:hover, .stack-chip--link:focus-visible { border-color: var(--accent-deep); color: var(--accent-deep); }
 .detail__long { max-width: 62ch; margin: 0 0 1.3rem; font-size: 13px; line-height: 1.6; }
 .detail__hint { margin: 0; color: var(--muted); font-size: 11px; }
 .detail__links { display: flex; flex-wrap: wrap; gap: 2.2rem; font-size: 13px; }

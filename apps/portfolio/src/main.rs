@@ -1,4 +1,4 @@
-use content::{ArtConfig, Design, EXPERIENCES, Experience, PROJECTS, Project};
+use content::{ArtConfig, Design, EXPERIENCES, Experience, PROJECTS, Project, STACK, Tool};
 use dioxus::prelude::*;
 use dioxus_web::WebEventExt;
 use gloo_events::EventListener;
@@ -38,6 +38,8 @@ enum View {
     Projects,
     About,
     Experience,
+    Stack,
+    Tool,
 }
 
 impl View {
@@ -46,6 +48,7 @@ impl View {
             Self::About => 1,
             Self::Projects => 2,
             Self::Experience => 3,
+            Self::Stack | Self::Tool => 4,
         }
     }
 }
@@ -109,6 +112,7 @@ struct DetailDisplay {
     view: View,
     project_index: usize,
     experience_index: usize,
+    stack_index: usize,
     revision: u64,
 }
 
@@ -125,15 +129,15 @@ fn Home() -> Element {
     let mut project_index = use_signal(|| 0usize);
     let mut project_cursor = use_signal(|| centered_project_cursor(0));
     let mut experience_index = use_signal(|| 0usize);
+    let mut stack_index = use_signal(|| 0usize);
     let theme = use_signal(|| Theme::Cobalt);
     let dark = use_signal(initial_dark_mode);
     use_effect(move || apply_dark_mode(dark()));
-    use_effect(move || {
-        if view() == View::About {
-            nav::back_to(0);
-        } else {
-            nav::push(1);
-        }
+    use_effect(move || match view() {
+        View::About => nav::back_to(0),
+        View::Tool => nav::push(2),
+        _ if nav::layer() >= 2 => nav::back_to(1),
+        _ => nav::push(1),
     });
     use_hook(move || {
         let mut view = view;
@@ -141,8 +145,14 @@ fn Home() -> Element {
             &gloo_utils::window(),
             "popstate",
             move |_| {
-                if nav::layer() == 0 && *view.peek() != View::About {
+                let layer = nav::layer();
+                if layer == 0 && *view.peek() != View::About {
                     *view.write() = View::About;
+                    if compact_layout() {
+                        nav::return_to_anchor();
+                    }
+                } else if layer == 1 && *view.peek() == View::Tool {
+                    *view.write() = View::Stack;
                     if compact_layout() {
                         nav::return_to_anchor();
                     }
@@ -154,6 +164,7 @@ fn Home() -> Element {
         view: View::About,
         project_index: 0,
         experience_index: 0,
+        stack_index: 0,
         revision: 0,
     });
     let mut detail_motion = use_signal(|| DetailMotion::Still);
@@ -165,10 +176,12 @@ fn Home() -> Element {
         let view = view;
         let project_index = project_index;
         let experience_index = experience_index;
+        let stack_index = stack_index;
         use_effect(move || {
             let next_view = view();
             let next_project = project_index();
             let next_experience = experience_index();
+            let next_stack = stack_index();
             if !*detail_initialized.peek() {
                 *detail_initialized.write() = true;
                 return;
@@ -189,6 +202,7 @@ fn Home() -> Element {
                     view: next_view,
                     project_index: next_project,
                     experience_index: next_experience,
+                    stack_index: next_stack,
                     revision: previous.revision.wrapping_add(1),
                 };
                 *detail_motion.write() = DetailMotion::Entering;
@@ -208,6 +222,7 @@ fn Home() -> Element {
         let mut project_index = project_index;
         let mut project_cursor = project_cursor;
         let mut experience_index = experience_index;
+        let mut stack_index = stack_index;
         let mut theme = theme;
         let mut dark = dark;
         use_effect(move || {
@@ -224,6 +239,7 @@ fn Home() -> Element {
                         "1" | "a" | "A" => *view.write() = View::About,
                         "2" | "p" | "P" => *view.write() = View::Projects,
                         "3" | "e" | "E" => *view.write() = View::Experience,
+                        "4" | "s" | "S" => *view.write() = View::Stack,
                         "w" | "W" => {
                             let _ =
                                 gloo_utils::window().open_with_url("https://blog.life2harsh.xyz");
@@ -246,6 +262,15 @@ fn Home() -> Element {
                         "k" | "ArrowUp" if matches!(view(), View::About | View::Experience) => {
                             *experience_index.write() =
                                 (experience_index() + EXPERIENCES.len() - 1) % EXPERIENCES.len();
+                        }
+                        "Enter" if view() == View::Stack => *view.write() = View::Tool,
+                        "j" | "ArrowDown" if matches!(view(), View::Stack | View::Tool) => {
+                            let next = (stack_index() + 1) % STACK.len();
+                            *stack_index.write() = next;
+                        }
+                        "k" | "ArrowUp" if matches!(view(), View::Stack | View::Tool) => {
+                            let next = (stack_index() + STACK.len() - 1) % STACK.len();
+                            *stack_index.write() = next;
                         }
                         "j" | "ArrowDown" => {
                             let next = project_cursor() + 1;
@@ -274,6 +299,7 @@ fn Home() -> Element {
                                 let _ = gloo_utils::window().open_with_url(link.url);
                             }
                         }
+                        "Escape" if view() == View::Tool => *view.write() = View::Stack,
                         "Escape" => *view.write() = View::About,
                         _ => return,
                     }
@@ -296,6 +322,10 @@ fn Home() -> Element {
         View::Experience => (
             selected_experience.art,
             format!("{}.{}", active.number(), experience_index() + 1),
+        ),
+        View::Stack | View::Tool => (
+            STACK[stack_index()].art,
+            format!("{}.{}", active.number(), stack_index() + 1),
         ),
     };
     let detail_class = match detail_motion() {
@@ -336,9 +366,14 @@ fn Home() -> Element {
                                     *experience_index.write() =
                                         (experience_index() as i64 + delta).rem_euclid(count) as usize;
                                 }
+                                View::Stack | View::Tool => {
+                                    let count = STACK.len() as i64;
+                                    *stack_index.write() =
+                                        (stack_index() as i64 + delta).rem_euclid(count) as usize;
+                                }
                             }
                         },
-                        div { class: "detail-stage", key: "{displayed.view:?}-{displayed.project_index}-{displayed.experience_index}-{displayed.revision}",
+                        div { class: "detail-stage", key: "{displayed.view:?}-{displayed.project_index}-{displayed.experience_index}-{displayed.stack_index}-{displayed.revision}",
                             match displayed.view {
                                 View::Projects => rsx! { ProjectDetail { project: &PROJECTS[displayed.project_index] } },
                                 View::About => rsx! {
@@ -353,6 +388,33 @@ fn Home() -> Element {
                                     }
                                 },
                                 View::Experience => rsx! { ExperienceDetail { item: &EXPERIENCES[displayed.experience_index], index: displayed.experience_index } },
+                                View::Stack => rsx! {
+                                    StackList {
+                                        selected: stack_index(),
+                                        on_hover: move |index| *stack_index.write() = index,
+                                        on_open: move |index| {
+                                            nav::remember(format!("stack-row-{index}"));
+                                            *stack_index.write() = index;
+                                            *view.write() = View::Tool;
+                                        },
+                                    }
+                                },
+                                View::Tool => rsx! {
+                                    ToolDetail {
+                                        tool: &STACK[displayed.stack_index],
+                                        on_back: move |_| *view.write() = View::Stack,
+                                        on_project: move |index| {
+                                            let cursor = centered_project_cursor(index);
+                                            *project_cursor.write() = cursor;
+                                            *project_index.write() = index;
+                                            *view.write() = View::Projects;
+                                        },
+                                        on_experience: move |index| {
+                                            *experience_index.write() = index;
+                                            *view.write() = View::Experience;
+                                        },
+                                    }
+                                },
                             }
                         }
                         motion::PixelVeil { motion: detail_motion() }
@@ -475,6 +537,7 @@ fn AppHeader(props: AppHeaderProps) -> Element {
                 button { class: if props.active == View::Projects { "is-active" } else { "" }, onclick: move |_| props.on_view.call(View::Projects), span { class: "key-hint", "[P] " } "projects" }
                 a { href: "https://blog.life2harsh.xyz", target: "_blank", rel: "noopener noreferrer", span { class: "key-hint", "[W] " } "writing" }
                 button { class: if props.active == View::About { "is-active" } else { "" }, onclick: move |_| props.on_view.call(View::About), span { class: "key-hint", "[A] " } "about" }
+                button { class: if matches!(props.active, View::Stack | View::Tool) { "is-active" } else { "" }, onclick: move |_| props.on_view.call(View::Stack), span { class: "key-hint", "[S] " } "stack" }
                 a { href: "/resume.pdf", target: "_blank", span { class: "key-hint", "[R] " } "résumé" }
             }
         }
@@ -611,6 +674,88 @@ fn ExperienceDetail(props: ExperienceDetailProps) -> Element {
                 }
                 p { class: "detail__long", "{item.description}" }
                 p { class: "detail__hint key-hint", "j k  cycle experience  ·  esc  back" }
+            }
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Props)]
+struct StackListProps {
+    selected: usize,
+    on_hover: EventHandler<usize>,
+    on_open: EventHandler<usize>,
+}
+
+#[component]
+fn StackList(props: StackListProps) -> Element {
+    rsx! {
+        article { class: "detail",
+            div { class: "detail__main",
+                button { class: "detail__back", onclick: move |_| nav::back_to(0), "← go back" }
+                p { class: "label", "STACK" }
+                h2 { class: "step-in", "what i build with" }
+                p { class: "detail__summary", "Languages I've shipped things in, and the frameworks that came along with them." }
+                div { class: "exp-list",
+                    for (index, tool) in STACK.iter().enumerate() {
+                        button {
+                            id: "stack-row-{index}",
+                            class: if index == props.selected { "exp-row is-selected" } else { "exp-row" },
+                            onclick: move |_| props.on_open.call(index),
+                            onmouseenter: move |_| props.on_hover.call(index),
+                            span { class: "exp-row__pointer", aria_hidden: "true", ">" }
+                            strong { "{tool.name.to_lowercase()}" }
+                            small { "{tool.tagline}" }
+                            small { class: "exp-row__period", "{tool.frameworks.len()} frameworks" }
+                        }
+                    }
+                }
+                p { class: "detail__hint key-hint", "j k  move  ·  enter  open  ·  esc  back" }
+            }
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Props)]
+struct ToolDetailProps {
+    tool: &'static Tool,
+    on_back: EventHandler<()>,
+    on_project: EventHandler<usize>,
+    on_experience: EventHandler<usize>,
+}
+
+#[component]
+fn ToolDetail(props: ToolDetailProps) -> Element {
+    let tool = props.tool;
+    let built = tool.projects().count() + tool.experiences().count();
+    rsx! {
+        article { class: "detail",
+            div { class: "detail__main",
+                button { class: "detail__back", onclick: move |_| props.on_back.call(()), "← all languages" }
+                p { class: "label", "STACK" }
+                h2 { class: "step-in", "{tool.name.to_lowercase()}" }
+                p { class: "detail__summary", "{tool.tagline}" }
+                dl { class: "kv kv--detail",
+                    div { dt { "FRAMEWORKS" } dd { class: "chips", for item in tool.frameworks { span { class: "stack-chip", "{item}" } } } }
+                    if built > 0 {
+                        div { dt { "USED IN" } dd { class: "chips",
+                            for (index, project) in tool.projects() {
+                                button { class: "stack-chip stack-chip--link", onclick: move |_| props.on_project.call(index), "{project.name.to_lowercase()} →" }
+                            }
+                            for (index, item) in tool.experiences() {
+                                button { class: "stack-chip stack-chip--link", onclick: move |_| props.on_experience.call(index), "{item.organization.to_lowercase()} →" }
+                            }
+                        } }
+                    }
+                    if !tool.repos.is_empty() {
+                        div { dt { "GITHUB" } dd { class: "chips",
+                            for link in tool.repos {
+                                a { class: "stack-chip stack-chip--link", href: "{link.url}", target: "_blank", rel: "noopener noreferrer", "{link.label} ↗" }
+                            }
+                        } }
+                    }
+                }
+                p { class: "detail__long", "{tool.description}" }
+                p { class: "detail__hint key-hint", "j k  cycle  ·  esc  all languages" }
             }
         }
     }
@@ -871,6 +1016,9 @@ fn LinkList(props: LinkListProps) -> Element {
             button { onclick: move |_| props.on_view.call(View::About),
                 span { "→" } strong { "about" } small { "who i am, what i do" }
             }
+            button { onclick: move |_| props.on_view.call(View::Stack),
+                span { "→" } strong { "stack" } small { "what i build with" }
+            }
             a { href: "/resume.pdf", target: "_blank",
                 span { "→" } strong { "résumé" } small { "pdf, experience, etc" }
             }
@@ -902,6 +1050,7 @@ fn StatusBar(props: StatusBarProps) -> Element {
             span { "↑↓ navigate" }
             span { "enter open" }
             span { "a about" }
+            span { "s stack" }
             span { "w writing" }
             span { "r résumé" }
             span { "t theme" }
