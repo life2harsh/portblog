@@ -16,6 +16,7 @@ pub struct ArtEngine {
     current_ink: [f64; 3],
     target_ink: [f64; 3],
     paper: [f64; 3],
+    solid: bool,
     frames: u64,
     last_time: Option<f64>,
     still: bool,
@@ -38,6 +39,7 @@ impl ArtEngine {
             current_ink: INK,
             target_ink: INK,
             paper: PAPER,
+            solid: false,
             frames: 0,
             last_time: None,
             still: false,
@@ -54,6 +56,10 @@ impl ArtEngine {
 
     pub fn set_ink(&mut self, ink: &str) {
         self.target_ink = hex_rgb(ink);
+    }
+
+    pub fn set_solid(&mut self, solid: bool) {
+        self.solid = solid;
     }
 
     pub fn set_still(&mut self, still: bool) {
@@ -101,7 +107,11 @@ impl ArtEngine {
         self.ctx.set_line_width(0.9 * ratio);
         self.ctx.set_line_join("round");
         let frame = self.field.frame(width, height);
-        let (ground, edge) = (self.paper, self.current_ink);
+        let (ground, edge) = if self.solid {
+            (self.current_ink, self.paper)
+        } else {
+            (self.paper, self.current_ink)
+        };
         let dark = ground.iter().sum::<f64>() < 384.0;
         let tint = self
             .current_tint
@@ -123,14 +133,18 @@ impl ArtEngine {
                 self.ctx.line_to(*x, *y);
             }
             self.ctx.close_path();
-            let filled = (strand.mix - 1.0).clamp(0.0, 1.0);
-            let fill = [0, 1, 2].map(|c| lerp(ground[c], tint[c], filled));
+            let (filled, hue) = if self.solid {
+                (strand.mix.clamp(0.0, 1.0), self.current_tint)
+            } else {
+                ((strand.mix - 1.0).clamp(0.0, 1.0), tint)
+            };
+            let fill = [0, 1, 2].map(|c| lerp(ground[c], hue[c], filled));
             self.ctx.set_fill_style_str(&format!(
                 "rgb({:.0} {:.0} {:.0})",
                 fill[0], fill[1], fill[2]
             ));
             self.ctx.fill();
-            let mix = strand.mix.min(1.0);
+            let mix = if self.solid { 0.0 } else { strand.mix.min(1.0) };
             let rgb = [0, 1, 2].map(|c| lerp(edge[c], tint[c], mix));
             let alpha = lerp(frame.alpha, 1.0, mix * 0.5);
             self.ctx.set_stroke_style_str(&format!(

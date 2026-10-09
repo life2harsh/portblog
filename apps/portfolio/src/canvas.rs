@@ -70,6 +70,7 @@ pub fn ArtCanvas(props: ArtCanvasProps) -> Element {
                             let mut created = ArtEngine::new(&canvas, props.config, props.accent);
                             created.set_still(reduced_motion());
                             created.set_ink(props.ink);
+                            created.set_solid(true);
                             *engine.write() = Some(created);
                         },
                     }
