@@ -1,4 +1,4 @@
-use content::{EXPERIENCES, PROJECTS, format_date};
+use content::{EXPERIENCES, PROJECTS, STACK, format_date};
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
@@ -7,7 +7,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::canvas::{Canvas, Points};
 use ratatui::widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap};
 
-use crate::app::{App, Tab};
+use crate::app::{App, SOCIALS, Tab};
 use crate::journal::Status;
 use crate::markdown;
 
@@ -55,8 +55,13 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
         ),
         Span::styled("    ", Style::default().fg(FAINT)),
     ];
+    let compact = area.width < 92;
     for (index, tab) in Tab::ALL.iter().enumerate() {
-        let label = format!(" {} {} ", index + 1, tab.label());
+        let label = if compact && *tab != app.tab {
+            format!(" {} ", index + 1)
+        } else {
+            format!(" {} {} ", index + 1, tab.label())
+        };
         let style = if *tab == app.tab {
             Style::default().bg(accent).fg(ON_ACCENT)
         } else {
@@ -69,7 +74,7 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::BOTTOM)
         .border_style(Style::default().fg(FAINT));
     frame.render_widget(Paragraph::new(Line::from(spans)).block(block), area);
-    if area.width > 70 {
+    if area.width > 104 {
         let tag = Paragraph::new(Span::styled(
             "ssh.life2harsh.xyz ",
             Style::default().fg(FAINT),
@@ -80,7 +85,14 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
-    let hints: &[(&str, &str)] = if app.reading {
+    let hints: &[(&str, &str)] = if app.social.is_some() {
+        &[
+            ("j k", "move"),
+            ("esc", "back"),
+            ("q", "quit"),
+            ("t", "theme"),
+        ]
+    } else if app.reading {
         &[
             ("j k", "scroll"),
             ("esc", "back"),
@@ -92,9 +104,10 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
         &[
             ("j k", "move"),
             ("q", "quit"),
-            ("1 2 3", "tabs"),
-            ("enter", "read"),
+            ("1-5", "tabs"),
+            ("c", "connect"),
             ("?", "help"),
+            ("enter", "open"),
             ("t", "theme"),
         ]
     };
@@ -167,7 +180,11 @@ fn draw_narrow(frame: &mut Frame, app: &mut App, area: Rect) {
         .border_style(Style::default().fg(FAINT));
     let inner = rule.inner(detail);
     frame.render_widget(rule, detail);
-    draw_detail(frame, app, pad(inner, 1, 0));
+    if app.social.is_some() {
+        draw_identity(frame, app, pad(inner, 1, 0));
+    } else {
+        draw_detail(frame, app, pad(inner, 1, 0));
+    }
 }
 
 fn pad(area: Rect, horizontal: u16, vertical: u16) -> Rect {
@@ -185,13 +202,13 @@ fn label(text: String) -> Line<'static> {
 
 fn key_value(key: &str, value: String) -> Line<'static> {
     Line::from(vec![
-        Span::styled(format!("{key:<10}"), Style::default().fg(MUTED)),
+        Span::styled(format!("{key:<12}"), Style::default().fg(MUTED)),
         Span::raw(value),
     ])
 }
 
 fn draw_identity(frame: &mut Frame, app: &App, area: Rect) {
-    let lines = vec![
+    let mut lines = vec![
         Line::from(vec![
             Span::styled(HEADLINE, Style::default().add_modifier(Modifier::BOLD)),
             Span::styled(" █", Style::default().fg(app.accent())),
@@ -199,10 +216,27 @@ fn draw_identity(frame: &mut Frame, app: &App, area: Rect) {
         Line::default(),
         Line::raw("systems, interfaces, creative tools, and weird experiments."),
         Line::default(),
-        key_value("LOCATION", "somewhere on earth".into()),
-        key_value("STACK", "rust, web, systems".into()),
-        key_value("STATUS", "searching for a W".into()),
     ];
+    let mut row = Vec::new();
+    for (index, (name, _, _)) in SOCIALS.iter().enumerate() {
+        let style = if app.social == Some(index) {
+            Style::default().bg(app.accent()).fg(ON_ACCENT)
+        } else {
+            Style::default()
+                .fg(MUTED)
+                .add_modifier(Modifier::UNDERLINED)
+        };
+        row.push(Span::styled(format!(" {} ", name.to_lowercase()), style));
+        row.push(Span::raw(" "));
+    }
+    lines.push(Line::from(row));
+    lines.push(match app.social {
+        Some(index) => Line::from(vec![
+            Span::styled("→ ", Style::default().fg(app.accent())),
+            Span::raw(SOCIALS[index].1),
+        ]),
+        None => Line::styled(" c  connect", Style::default().fg(FAINT)),
+    });
     frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: true }), area);
 }
 
@@ -282,6 +316,53 @@ fn draw_detail(frame: &mut Frame, app: &App, area: Rect) {
                 ),
             ]
         }
+        Tab::Experience => {
+            let item = &EXPERIENCES[app.experience];
+            vec![
+                label("EXPERIENCE".into()),
+                heading(item.organization.to_lowercase()),
+                Line::raw(item.role.to_string()),
+                Line::default(),
+                key_value("PERIOD", item.period.to_string()),
+                key_value("STACK", item.stack.join(", ")),
+                Line::default(),
+                Line::raw(item.description.to_string()),
+            ]
+        }
+        Tab::Stack => {
+            let tool = &STACK[app.tool];
+            let used = tool
+                .projects()
+                .map(|(_, project)| project.name.to_lowercase())
+                .chain(
+                    tool.experiences()
+                        .map(|(_, item)| item.organization.to_lowercase()),
+                )
+                .collect::<Vec<_>>();
+            let mut lines = vec![
+                label("STACK".into()),
+                heading(tool.name.to_lowercase()),
+                Line::raw(tool.tagline.to_string()),
+                Line::default(),
+                key_value("FRAMEWORKS", tool.frameworks.join(", ")),
+            ];
+            if !used.is_empty() {
+                lines.push(key_value("USED IN", used.join(", ")));
+            }
+            if !tool.repos.is_empty() {
+                lines.push(key_value(
+                    "GITHUB",
+                    tool.repos
+                        .iter()
+                        .map(|link| link.label)
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                ));
+            }
+            lines.push(Line::default());
+            lines.push(Line::raw(tool.description.to_string()));
+            lines
+        }
         Tab::Projects => {
             let project = &PROJECTS[app.project];
             let mut lines = vec![
@@ -354,7 +435,7 @@ fn draw_detail(frame: &mut Frame, app: &App, area: Rect) {
 fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
     let accent = app.accent();
     let (title, rows, selected): (&str, Vec<(String, String, String)>, usize) = match app.tab {
-        Tab::About => (
+        Tab::About | Tab::Experience => (
             "EXPERIENCE",
             EXPERIENCES
                 .iter()
@@ -387,6 +468,23 @@ fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
                 })
                 .collect(),
             app.project,
+        ),
+        Tab::Stack => (
+            "STACK",
+            STACK
+                .iter()
+                .map(|tool| {
+                    (
+                        tool.name.to_lowercase(),
+                        tool.tagline.to_string(),
+                        match tool.frameworks.len() {
+                            1 => "1 framework".to_string(),
+                            count => format!("{count} frameworks"),
+                        },
+                    )
+                })
+                .collect(),
+            app.tool,
         ),
         Tab::Writing => (
             "POSTS",
@@ -507,8 +605,8 @@ fn draw_article(frame: &mut Frame, app: &mut App, area: Rect) {
 }
 
 fn draw_help(frame: &mut Frame, app: &App, area: Rect) {
-    let width = 46.min(area.width.saturating_sub(4));
-    let height = 16.min(area.height.saturating_sub(2));
+    let width = 52.min(area.width.saturating_sub(4));
+    let height = 17.min(area.height.saturating_sub(2));
     let rect = Rect {
         x: area.x + (area.width - width) / 2,
         y: area.y + (area.height - height) / 2,
@@ -516,11 +614,13 @@ fn draw_help(frame: &mut Frame, app: &App, area: Rect) {
         height,
     };
     let rows = [
-        ("1 2 3  a p w", "about, projects, writing"),
+        ("1-5  a p e s w", "about, projects, experience,"),
+        ("", "stack, writing"),
         ("tab  h l", "next / previous tab"),
         ("j k  ↑ ↓", "move, or scroll a post"),
         ("g G", "first / last"),
-        ("enter", "read the selected post"),
+        ("c", "github, linkedin, email"),
+        ("enter", "open experience, read a post"),
         ("space  pgup pgdn", "page through a post"),
         ("esc", "back to the list"),
         ("t", "cycle accent theme"),

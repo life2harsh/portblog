@@ -1,5 +1,5 @@
 use art::Field;
-use content::{ArtConfig, Design, EXPERIENCES, Entry, PROJECTS};
+use content::{ArtConfig, Design, EXPERIENCES, Entry, PROJECTS, STACK};
 use ratatui::style::Color;
 
 use crate::journal::{Shared, Status};
@@ -9,16 +9,26 @@ use crate::keys::Key;
 pub enum Tab {
     About,
     Projects,
+    Experience,
+    Stack,
     Writing,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 3] = [Tab::About, Tab::Projects, Tab::Writing];
+    pub const ALL: [Tab; 5] = [
+        Tab::About,
+        Tab::Projects,
+        Tab::Experience,
+        Tab::Stack,
+        Tab::Writing,
+    ];
 
     pub fn label(self) -> &'static str {
         match self {
             Tab::About => "about",
             Tab::Projects => "projects",
+            Tab::Experience => "experience",
+            Tab::Stack => "stack",
             Tab::Writing => "writing",
         }
     }
@@ -27,6 +37,12 @@ impl Tab {
         Self::ALL.iter().position(|tab| *tab == self).unwrap_or(0)
     }
 }
+
+pub const SOCIALS: [(&str, &str, Design); 3] = [
+    ("GITHUB", "github.com/life2harsh", Design::Fork),
+    ("LINKEDIN", "linkedin.com/in/life2harsh", Design::Mesh),
+    ("EMAIL", "jhaharsh29@gmail.com", Design::Knot),
+];
 
 pub const THEMES: [(&str, Color); 5] = [
     ("ACID", Color::Rgb(212, 245, 60)),
@@ -46,6 +62,8 @@ pub struct App {
     pub tab: Tab,
     pub project: usize,
     pub experience: usize,
+    pub tool: usize,
+    pub social: Option<usize>,
     pub entry: usize,
     pub reading: bool,
     pub scroll: u16,
@@ -66,6 +84,8 @@ impl App {
             tab: Tab::About,
             project: 0,
             experience: 0,
+            tool: 0,
+            social: None,
             entry: 0,
             reading: false,
             scroll: 0,
@@ -104,12 +124,38 @@ impl App {
             self.help = false;
             return Outcome::Continue;
         }
+        if let Some(index) = self.social {
+            let delta = match key {
+                Key::Down | Key::Right | Key::Tab | Key::Char('j' | 'l') => Some(1),
+                Key::Up | Key::Left | Key::BackTab | Key::Char('k' | 'h') => Some(-1),
+                _ => None,
+            };
+            if let Some(delta) = delta {
+                let next = (index as i64 + delta).rem_euclid(SOCIALS.len() as i64) as usize;
+                self.social = Some(next);
+                self.field.transition_to(self.art_target());
+                return Outcome::Continue;
+            }
+            match key {
+                Key::Escape | Key::Backspace | Key::Char('c') => {
+                    self.social = None;
+                    self.field.transition_to(self.art_target());
+                    return Outcome::Continue;
+                }
+                Key::Enter => return Outcome::Continue,
+                Key::Interrupt | Key::Char('q' | '?' | 't') => {}
+                _ => self.social = None,
+            }
+        }
         match key {
             Key::Interrupt | Key::Char('q') => return Outcome::Quit,
             Key::Char('?') => self.help = true,
+            Key::Char('c') if !self.reading => self.social = Some(0),
             Key::Char('1' | 'a') => self.switch(Tab::About),
             Key::Char('2' | 'p') => self.switch(Tab::Projects),
-            Key::Char('3' | 'w') => self.switch(Tab::Writing),
+            Key::Char('3' | 'e') => self.switch(Tab::Experience),
+            Key::Char('4' | 's') => self.switch(Tab::Stack),
+            Key::Char('5' | 'w') => self.switch(Tab::Writing),
             Key::Tab | Key::Right | Key::Char('l') if !self.reading => {
                 self.switch(Tab::ALL[(self.tab.index() + 1) % Tab::ALL.len()])
             }
@@ -125,6 +171,7 @@ impl App {
             Key::PageUp if self.reading => self.scroll = self.scroll.saturating_sub(10),
             Key::Home | Key::Char('g') => self.jump(false),
             Key::End | Key::Char('G') => self.jump(true),
+            Key::Enter if self.tab == Tab::About => self.switch(Tab::Experience),
             Key::Enter if self.tab == Tab::Writing && !self.entries.is_empty() => {
                 self.reading = true;
                 self.scroll = 0;
@@ -151,8 +198,9 @@ impl App {
             return;
         }
         let (index, len) = match self.tab {
-            Tab::About => (&mut self.experience, EXPERIENCES.len()),
+            Tab::About | Tab::Experience => (&mut self.experience, EXPERIENCES.len()),
             Tab::Projects => (&mut self.project, PROJECTS.len()),
+            Tab::Stack => (&mut self.tool, STACK.len()),
             Tab::Writing => (&mut self.entry, self.entries.len()),
         };
         if len > 0 {
@@ -166,17 +214,26 @@ impl App {
             return;
         }
         let (index, len) = match self.tab {
-            Tab::About => (&mut self.experience, EXPERIENCES.len()),
+            Tab::About | Tab::Experience => (&mut self.experience, EXPERIENCES.len()),
             Tab::Projects => (&mut self.project, PROJECTS.len()),
+            Tab::Stack => (&mut self.tool, STACK.len()),
             Tab::Writing => (&mut self.entry, self.entries.len()),
         };
         *index = if end { len.saturating_sub(1) } else { 0 };
     }
 
     fn art_target(&self) -> ArtConfig {
+        if let Some(index) = self.social {
+            return ArtConfig {
+                design: SOCIALS[index].2,
+                seed: 31 + index as u64,
+            };
+        }
         match self.tab {
             Tab::About => about_art(),
             Tab::Projects => PROJECTS[self.project].art,
+            Tab::Experience => EXPERIENCES[self.experience].art,
+            Tab::Stack => STACK[self.tool].art,
             Tab::Writing => self
                 .selected_entry()
                 .map_or_else(about_art, |entry| entry_art(entry.seed())),
@@ -255,11 +312,43 @@ mod tests {
         app.handle(Key::Char('j'));
         assert_eq!(app.project, 0);
         app.handle(Key::Tab);
-        assert_eq!(app.tab, Tab::Writing);
+        assert_eq!(app.tab, Tab::Experience);
         app.handle(Key::BackTab);
         assert_eq!(app.tab, Tab::Projects);
+        app.handle(Key::Char('s'));
+        app.handle(Key::Up);
+        assert_eq!(app.tool, STACK.len() - 1);
+        app.handle(Key::Tab);
+        assert_eq!(app.tab, Tab::Writing);
+        app.handle(Key::Char('a'));
+        app.handle(Key::Enter);
+        assert_eq!(app.tab, Tab::Experience);
+        app.handle(Key::Char('p'));
         app.handle(Key::Char('t'));
         assert_eq!(app.theme_label(), "BURNT");
+    }
+
+    #[test]
+    fn connect_is_a_section() {
+        let mut app = app();
+        app.handle(Key::Char('c'));
+        assert_eq!(app.social, Some(0));
+        app.handle(Key::Down);
+        app.handle(Key::Char('l'));
+        assert_eq!(app.social, Some(2));
+        app.handle(Key::Right);
+        assert_eq!(app.social, Some(0));
+        app.handle(Key::Up);
+        assert_eq!(app.social, Some(2));
+        app.handle(Key::Char('t'));
+        assert_eq!(app.social, Some(2));
+        assert_eq!(app.experience, 0);
+        app.handle(Key::Escape);
+        assert_eq!(app.social, None);
+        app.handle(Key::Char('c'));
+        app.handle(Key::Char('s'));
+        assert_eq!(app.social, None);
+        assert_eq!(app.tab, Tab::Stack);
     }
 
     #[test]
@@ -277,7 +366,7 @@ mod tests {
     fn reading_needs_entries() {
         let shared = journal::shared();
         let mut app = App::new(shared.clone());
-        app.handle(Key::Char('3'));
+        app.handle(Key::Char('5'));
         app.handle(Key::Enter);
         assert!(!app.reading);
         {
