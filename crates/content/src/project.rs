@@ -23,6 +23,9 @@ pub enum Design {
     C,
     Java,
     Dart,
+    Fork,
+    Mesh,
+    Knot,
 }
 
 impl Design {

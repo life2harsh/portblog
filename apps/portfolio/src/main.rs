@@ -130,6 +130,7 @@ fn Home() -> Element {
     let mut project_cursor = use_signal(|| centered_project_cursor(0));
     let mut experience_index = use_signal(|| 0usize);
     let mut stack_index = use_signal(|| 0usize);
+    let mut social = use_signal(|| None::<usize>);
     let theme = use_signal(|| Theme::Cobalt);
     let dark = use_signal(initial_dark_mode);
     use_effect(move || apply_dark_mode(dark()));
@@ -238,7 +239,34 @@ fn Home() -> Element {
                         return;
                     }
 
+                    if let Some(active) = gloo_utils::document().active_element()
+                        && active.matches(".connect__link").unwrap_or(false)
+                    {
+                        let step = match key.key().as_str() {
+                            "ArrowRight" | "ArrowDown" | "l" | "j" => 1,
+                            "ArrowLeft" | "ArrowUp" | "h" | "k" => -1,
+                            "Enter" => return,
+                            "Escape" => 0,
+                            _ => 2,
+                        };
+                        if step != 2 {
+                            key.prevent_default();
+                            if step == 0 {
+                                if let Ok(active) = active.dyn_into::<web_sys::HtmlElement>() {
+                                    let _ = active.blur();
+                                }
+                            } else {
+                                focus_connect(Some(&active), step);
+                            }
+                            return;
+                        }
+                    }
                     match key.key().as_str() {
+                        "c" | "C" => {
+                            focus_connect(None, 1);
+                            key.prevent_default();
+                            return;
+                        }
                         "1" | "a" | "A" => *view.write() = View::About,
                         "2" | "p" | "P" => *view.write() = View::Projects,
                         "3" | "e" | "E" => *view.write() = View::Experience,
@@ -311,6 +339,15 @@ fn Home() -> Element {
                     if matches!(key.key().as_str(), "ArrowUp" | "ArrowDown") {
                         key.prevent_default();
                     }
+                    if !matches!(
+                        key.key().as_str(),
+                        "Enter" | "t" | "T" | "d" | "D" | "m" | "M" | "w" | "W" | "r" | "R"
+                    ) && let Some(focused) = gloo_utils::document()
+                        .active_element()
+                        .and_then(|element| element.dyn_into::<web_sys::HtmlElement>().ok())
+                    {
+                        let _ = focused.blur();
+                    }
                 },
             );
             std::mem::forget(listener);
@@ -321,20 +358,29 @@ fn Home() -> Element {
     let selected_project = &PROJECTS[project_index()];
     let selected_experience = &EXPERIENCES[experience_index()];
     let displayed = detail_display();
-    let (art, figure) = match active {
-        View::About => (about_art(), format!("{}", active.number())),
-        View::Projects => (
-            selected_project.art,
-            format!("{}.{}", active.number(), project_index() + 1),
+    let (art, figure) = match (social(), active) {
+        (Some(index), _) => (
+            ArtConfig {
+                design: SOCIALS[index].2,
+                seed: 31 + index as u64,
+            },
+            format!("C.{}", index + 1),
         ),
-        View::Experience => (
-            selected_experience.art,
-            format!("{}.{}", active.number(), experience_index() + 1),
-        ),
-        View::Stack | View::Tool => (
-            STACK[stack_index()].art,
-            format!("{}.{}", active.number(), stack_index() + 1),
-        ),
+        (None, active) => match active {
+            View::About => (about_art(), format!("{}", active.number())),
+            View::Projects => (
+                selected_project.art,
+                format!("{}.{}", active.number(), project_index() + 1),
+            ),
+            View::Experience => (
+                selected_experience.art,
+                format!("{}.{}", active.number(), experience_index() + 1),
+            ),
+            View::Stack | View::Tool => (
+                STACK[stack_index()].art,
+                format!("{}.{}", active.number(), stack_index() + 1),
+            ),
+        },
     };
     let detail_class = match detail_motion() {
         DetailMotion::Still => "left-detail",
@@ -352,7 +398,7 @@ fn Home() -> Element {
             section { class: "app-main",
                 section { class: "shell-left",
                     div { class: "left-upper",
-                        IdentityBlock {}
+                        IdentityBlock { active: social(), on_social: move |index| *social.write() = index }
                         canvas::ArtCanvas { config: art, figure, accent: theme().art_tint(), ink: if dark() { DARK_INK } else { LIGHT_INK } }
                     }
                     div {
@@ -513,6 +559,32 @@ fn follow_row(id: &str) {
     }
 }
 
+fn focus_connect(current: Option<&web_sys::Element>, step: i32) {
+    let Ok(links) = gloo_utils::document().query_selector_all(".connect__link") else {
+        return;
+    };
+    let count = links.length() as i32;
+    if count == 0 {
+        return;
+    }
+    let position = (0..count).find(|index| {
+        links
+            .item(*index as u32)
+            .zip(current)
+            .is_some_and(|(node, active)| node.is_same_node(Some(active)))
+    });
+    let next = match position {
+        Some(index) => (index + step).rem_euclid(count),
+        None => 0,
+    };
+    if let Some(link) = links
+        .item(next as u32)
+        .and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok())
+    {
+        let _ = link.focus();
+    }
+}
+
 fn reveal_detail() {
     if !compact_layout() {
         return;
@@ -529,6 +601,16 @@ fn project_index_for_cursor(cursor: i64) -> usize {
 fn centered_project_cursor(index: usize) -> i64 {
     PROJECTS.len() as i64 * PROJECT_LOOP_CENTER + index as i64
 }
+
+const SOCIALS: [(&str, &str, Design); 3] = [
+    ("github", "https://github.com/life2harsh", Design::Fork),
+    (
+        "linkedin",
+        "https://linkedin.com/in/life2harsh",
+        Design::Mesh,
+    ),
+    ("email", "mailto:jhaharsh29@gmail.com", Design::Knot),
+];
 
 const LIGHT_INK: &str = "#141413";
 const DARK_INK: &str = "#e6e3d9";
@@ -602,8 +684,21 @@ fn kolkata_clock() -> String {
     format!("{:02}:{:02}", date.get_utc_hours(), date.get_utc_minutes())
 }
 
+#[derive(Clone, PartialEq, Props)]
+struct IdentityBlockProps {
+    active: Option<usize>,
+    on_social: EventHandler<Option<usize>>,
+}
+
+fn hovered_link(event: &MouseEvent) -> Option<web_sys::HtmlElement> {
+    event
+        .as_web_event()
+        .current_target()
+        .and_then(|target| target.dyn_into::<web_sys::HtmlElement>().ok())
+}
+
 #[component]
-fn IdentityBlock() -> Element {
+fn IdentityBlock(props: IdentityBlockProps) -> Element {
     rsx! {
         section { class: "identity",
             h1 { class: "identity__headline",
@@ -612,10 +707,32 @@ fn IdentityBlock() -> Element {
             }
             hr { class: "short-rule" }
             p { class: "identity__copy", "systems, interfaces, creative tools, and weird experiments." }
-            dl { class: "kv",
-                div { dt { "LOCATION" } dd { "somewhere on earth" } }
-                div { dt { "STACK" } dd { "rust, web, systems" } }
-                div { dt { "STATUS" } dd { "searching for a W" } }
+            nav { class: "connect", aria_label: "Connect",
+                span { class: "connect__label", "CONNECT" span { class: "connect__key", "[C]" } }
+                div { class: "connect__links",
+                    for (index, (label, href, _)) in SOCIALS.into_iter().enumerate() {
+                        a {
+                            class: if props.active == Some(index) { "connect__link is-active" } else { "connect__link" },
+                            onmouseenter: move |event| {
+                                if let Some(link) = hovered_link(&event) {
+                                    let _ = link.focus();
+                                }
+                            },
+                            onmouseleave: move |event| {
+                                if let Some(link) = hovered_link(&event) {
+                                    let _ = link.blur();
+                                }
+                            },
+                            onfocus: move |_| props.on_social.call(Some(index)),
+                            onblur: move |_| props.on_social.call(None),
+                            href,
+                            target: if href.starts_with("http") { "_blank" } else { "_self" },
+                            rel: "noopener noreferrer",
+                            span { class: "connect__name", "{label}" }
+                            span { class: "connect__arrow", aria_hidden: "true", "↗" }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1101,6 +1218,7 @@ fn StatusBar(props: StatusBarProps) -> Element {
             span { "enter open" }
             span { "a about" }
             span { "s stack" }
+            span { "c connect" }
             span { "w writing" }
             span { "r résumé" }
             span { "t theme" }

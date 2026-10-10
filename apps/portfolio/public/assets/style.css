@@ -65,6 +65,18 @@ button { padding: 0; border: 0; background: transparent; cursor: pointer; text-a
 .kv div { display: grid; grid-template-columns: 5.8rem 1fr; align-items: center; }
 .kv dt { color: var(--muted); font-family: var(--pixel); font-size: 11px; letter-spacing: .04em; }
 .kv dd { margin: 0; }
+.connect { display: grid; gap: clamp(.45rem, 1vh, .7rem); margin: auto 0 0; }
+.connect__label { display: flex; gap: .6rem; color: var(--muted); font-family: var(--pixel); font-size: 11px; letter-spacing: .04em; }
+.connect__key { color: var(--faint); }
+.connect__links { display: flex; flex-wrap: wrap; gap: .45rem; }
+.connect__link { position: relative; display: inline-flex; align-items: center; gap: .55rem; overflow: hidden; padding: .4rem .7rem; border: 1px solid var(--rule); color: var(--ink); font-size: 12px; text-decoration: none; isolation: isolate; transition: color 260ms var(--ease), border-color 260ms var(--ease); }
+.connect__link::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--acid); transform: scaleX(0); transform-origin: left; transition: transform 380ms var(--ease); }
+.connect__arrow { display: inline-block; transition: transform 380ms var(--ease); }
+.connect__link:focus { outline: none; }
+.connect__link.is-active { border-color: var(--acid); color: var(--acid-ink); }
+.connect__link.is-active::before { transform: scaleX(1); }
+.connect__link.is-active .connect__arrow { transform: translate(2px, -2px); }
+.connect__link:active { transform: translateY(1px); }
 
 .art { position: relative; min-width: 0; min-height: 0; margin: 0; padding: clamp(1.2rem, 3.4vh, 2.4rem) var(--gutter) clamp(1rem, 2.4vh, 1.6rem) clamp(.6rem, 1.4vw, 1.4rem); }
 .art__window { display: grid; grid-template-rows: 1.45rem minmax(0, 1fr); height: 100%; border: 1px solid var(--rule); background: var(--bg); }

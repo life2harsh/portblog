@@ -1,3 +1,4 @@
+mod connect;
 #[cfg(feature = "web")]
 pub mod engine;
 pub mod field;
