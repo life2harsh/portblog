@@ -14,6 +14,7 @@ pub enum Design {
     Cube,
     Helix,
     Stacks,
+    Agenda,
     Rust,
     TypeScript,
     JavaScript,
@@ -145,6 +146,25 @@ pub static PROJECTS: &[Project] = &[
         art: ArtConfig {
             design: Design::Orbit,
             seed: 3311,
+        },
+    },
+    Project {
+        slug: "whatagent",
+        name: "whatagent",
+        year: "2026",
+        description: "Text yourself on WhatsApp, or send a voice note, and it lands in Google Calendar or your todo list, with reminders back in the same chat.",
+        stack: &["Rust", "Tokio", "Gemini", "SQLite", "Google Calendar API"],
+        status: ProjectStatus::Active,
+        links: &[ProjectLink {
+            label: "github",
+            url: "https://github.com/life2harsh/whatagent",
+        }],
+        long_description: None,
+        live_url: None,
+        previews: &["/previews/whatagent.webp"],
+        art: ArtConfig {
+            design: Design::Agenda,
+            seed: 6150,
         },
     },
     Project {

@@ -2,7 +2,7 @@ use std::f64::consts::{PI, TAU};
 
 use content::{ArtConfig, Design};
 
-use crate::math::{fbm, hash, smootherstep};
+use crate::math::{fbm, hash, lerp, smootherstep};
 
 pub const SHAPES: usize = 96;
 pub const POINTS: usize = 40;
@@ -451,6 +451,7 @@ fn generate(design: Design, plan: &Plan) -> Shape {
         Design::Cube => cube(plan),
         Design::Helix => helix(plan),
         Design::Stacks => stacks(plan),
+        Design::Agenda => agenda(plan),
         Design::Rust => crate::logos::rust(plan),
         Design::TypeScript => crate::logos::typescript(plan),
         Design::JavaScript => crate::logos::javascript(plan),
@@ -1059,6 +1060,169 @@ fn stacks(plan: &Plan) -> Shape {
                 |u| plane(center, [1.0, 0.0, 0.0], [0.0, 0.0, 1.0], circle(u, radius)),
                 if c == 4 && k + 1 == per { 1.0 } else { 0.0 },
             );
+        }
+    }
+    scene.finish(0.72)
+}
+
+fn bubble(half_width: f64, half_height: f64, tail: f64) -> Vec<[f64; 2]> {
+    let mut outline = rounded(half_width, half_height, half_height * 0.45);
+    outline.splice(
+        8..12,
+        [
+            [-half_width, -half_height + tail * 0.4],
+            [-half_width - tail * 0.7, -half_height - tail * 0.5],
+            [-half_width + tail, -half_height],
+        ],
+    );
+    outline
+}
+
+fn agenda(plan: &Plan) -> Shape {
+    let t = plan.t + plan.unit(0) * 40.0;
+    let mut scene = plan.scene(Camera {
+        yaw: 0.28 * (t * 0.19).sin(),
+        pitch: -0.12 + 0.06 * (t * 0.23).sin(),
+        scale: 0.95,
+        focal: 3.6,
+    });
+    let (sin, cos) = (-0.24f64).sin_cos();
+    let across = [cos, 0.0, -sin];
+    let centre = [0.16, 0.12, 0.32];
+    let at = |u: f64, v: f64| add(centre, add(mul(across, u), mul(Y, v)));
+    scene.add_part(&rounded(0.66, 0.6, 0.06), centre, across, Y, 0.0, -0.4);
+    scene.add_part(
+        &rounded(0.6, 0.065, 0.03),
+        at(0.0, 0.47),
+        across,
+        Y,
+        0.0,
+        0.01,
+    );
+    for u in [-0.33, 0.33] {
+        scene.add_part(
+            &rounded(0.024, 0.075, 0.018),
+            at(u, 0.6),
+            across,
+            Y,
+            1.0,
+            0.03,
+        );
+    }
+
+    let (columns, rows) = (7usize, 5usize);
+    let cells = columns * rows;
+    let pitch = 0.17;
+    let half = 0.064;
+    let cell_at = |index: usize| {
+        let (c, r) = (index % columns, index / columns);
+        at((c as f64 - 3.0) * pitch, -0.09 + (2.0 - r as f64) * pitch)
+    };
+
+    let messages = 5usize;
+    let period = 1.4;
+    let flight = 2.0;
+    let length = period * (messages - 1) as f64 + flight + 2.4;
+    let round = (t / length).floor();
+    let clock = t - round * length;
+    let base = (plan.unit(50 + round as u64) * cells as f64) as usize;
+    let target = |i: usize| (base + i * 11) % cells;
+    let clear = 1.0 - smootherstep((clock - (length - 0.8)) / 0.7);
+    let today = (plan.unit(1) * cells as f64) as usize;
+
+    for index in 0..cells {
+        let landed = (0..messages)
+            .find(|&i| target(i) == index)
+            .map_or(0.0, |i| {
+                smootherstep((clock - i as f64 * period - flight) / 0.25)
+            });
+        let mix = if landed > 0.0 {
+            2.0 * landed * clear
+        } else if index == today {
+            1.0
+        } else {
+            0.0
+        };
+        scene.add_part(&square(half, half), cell_at(index), across, Y, mix, 0.01);
+    }
+
+    for i in 0..messages {
+        let tau = (clock - i as f64 * period) / flight;
+        if !(0.0..1.0).contains(&tau) {
+            continue;
+        }
+        let pop = smootherstep(tau / 0.15);
+        let travel = smootherstep((tau - 0.35) / 0.65);
+        let start = [-0.52 + 0.06 * (i % 2) as f64, -0.6, -0.42];
+        let end = cell_at(target(i));
+        let centre = add(
+            [
+                lerp(start[0], end[0], travel),
+                lerp(start[1], end[1], travel),
+                lerp(start[2], end[2], travel),
+            ],
+            [
+                0.0,
+                0.05 * (tau * 9.0).sin() * (1.0 - travel) + 0.3 * (PI * travel).sin(),
+                0.0,
+            ],
+        );
+        let face = unit(add(mul(X, 1.0 - travel), mul(across, travel)));
+        let half_width = lerp(0.24, half, travel) * pop;
+        let half_height = lerp(0.12, half, travel) * pop;
+        scene.add_part(
+            &bubble(half_width, half_height, 0.07 * pop * (1.0 - travel)),
+            centre,
+            face,
+            Y,
+            0.0,
+            0.04,
+        );
+        if travel > 0.5 {
+            continue;
+        }
+        let k = pop * (1.0 - travel * 1.4);
+        if (round as usize + i).is_multiple_of(2) {
+            scene.add_part(
+                &moved(
+                    &[[-0.04, 0.045], [-0.04, -0.045], [0.035, 0.0]],
+                    -0.13 * k,
+                    0.0,
+                    k,
+                ),
+                centre,
+                face,
+                Y,
+                1.0,
+                0.05,
+            );
+            for bar in 0..4 {
+                let level = 0.015 + 0.05 * (t * 5.0 + bar as f64 * 1.3).sin().abs();
+                scene.add_part(
+                    &moved(
+                        &square(0.012, level),
+                        (-0.02 + 0.055 * bar as f64) * k,
+                        0.0,
+                        k,
+                    ),
+                    centre,
+                    face,
+                    Y,
+                    0.0,
+                    0.05,
+                );
+            }
+        } else {
+            for (line, reach) in [(0.035, 0.15), (-0.035, 0.08)] {
+                scene.add_part(
+                    &moved(&square(reach, 0.012), (reach - 0.17) * k, line * k, k),
+                    centre,
+                    face,
+                    Y,
+                    0.0,
+                    0.05,
+                );
+            }
         }
     }
     scene.finish(0.72)
