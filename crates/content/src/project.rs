@@ -24,7 +24,7 @@ pub enum Design {
     C,
     Java,
     Dart,
-    Fork,
+    Octocat,
     Mesh,
     Knot,
 }

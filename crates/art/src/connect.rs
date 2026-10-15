@@ -1,7 +1,6 @@
 use std::f64::consts::{PI, TAU};
 
 use crate::field::{Camera, Plan, Shape, V3, X, Y, Z, add, cross, ellipse, mul, square, sub, unit};
-use crate::math::smootherstep;
 
 fn spin(p: V3, angle: f64) -> V3 {
     let (sin, cos) = angle.sin_cos();
@@ -11,15 +10,6 @@ fn spin(p: V3, angle: f64) -> V3 {
 fn tilt(p: V3, angle: f64) -> V3 {
     let (sin, cos) = angle.sin_cos();
     [p[0], p[1] * cos - p[2] * sin, p[1] * sin + p[2] * cos]
-}
-
-fn turn(v: V3, axis: V3, angle: f64) -> V3 {
-    let (sin, cos) = angle.sin_cos();
-    let along = v[0] * axis[0] + v[1] * axis[1] + v[2] * axis[2];
-    add(
-        add(mul(v, cos), mul(cross(axis, v), sin)),
-        mul(axis, along * (1.0 - cos)),
-    )
 }
 
 fn across(direction: V3) -> V3 {
@@ -40,47 +30,108 @@ fn camera(t: f64) -> Camera {
     }
 }
 
-pub(crate) fn fork(plan: &Plan) -> Shape {
+const OCTOCAT: [[f64; 2]; 38] = [
+    [-0.316, -0.949],
+    [-0.249, -0.715],
+    [-0.504, -0.695],
+    [-0.585, -0.597],
+    [-0.688, -0.456],
+    [-0.689, -0.390],
+    [-0.535, -0.492],
+    [-0.377, -0.600],
+    [-0.244, -0.575],
+    [-0.180, -0.441],
+    [-0.313, -0.417],
+    [-0.436, -0.367],
+    [-0.539, -0.279],
+    [-0.609, -0.143],
+    [-0.635, 0.053],
+    [-0.608, 0.201],
+    [-0.532, 0.321],
+    [-0.552, 0.412],
+    [-0.522, 0.586],
+    [-0.457, 0.583],
+    [-0.247, 0.484],
+    [0.002, 0.518],
+    [0.252, 0.484],
+    [0.462, 0.584],
+    [0.527, 0.586],
+    [0.557, 0.412],
+    [0.537, 0.321],
+    [0.613, 0.202],
+    [0.640, 0.052],
+    [0.614, -0.144],
+    [0.543, -0.280],
+    [0.440, -0.367],
+    [0.317, -0.417],
+    [0.184, -0.441],
+    [0.251, -0.626],
+    [0.251, -0.801],
+    [0.319, -0.949],
+    [0.000, -1.000],
+];
+
+fn swing(point: [f64; 2], pivot: [f64; 2], angle: f64) -> [f64; 2] {
+    let (sin, cos) = angle.sin_cos();
+    let (x, y) = (point[0] - pivot[0], point[1] - pivot[1]);
+    [pivot[0] + x * cos - y * sin, pivot[1] + x * sin + y * cos]
+}
+
+fn pulse(t: f64, every: f64, at: f64, span: f64) -> f64 {
+    let f = ((t / every).fract() * every - at) / span;
+    if (0.0..1.0).contains(&f) { f } else { -1.0 }
+}
+
+pub(crate) fn octocat(plan: &Plan) -> Shape {
     let t = plan.t;
     let mut scene = plan.scene(camera(t));
-    let depth = if plan.shapes >= 64 { 6 } else { 5 };
-    let cycle = (t / 14.0).fract() * 14.0;
-    let wither = 1.0 - smootherstep((cycle - 13.0) / 0.9);
-    let turning = t * 0.3;
-    let mut stack: Vec<(V3, V3, V3, f64, usize)> = vec![([0.0, -0.98, 0.0], Y, X, 0.5, 0)];
-    while let Some((start, direction, side, length, level)) = stack.pop() {
-        let grow = smootherstep((cycle - 0.1 - level as f64 * 0.22) / 0.45) * wither;
-        if grow < 0.01 {
-            continue;
-        }
-        let reach = length * grow;
-        let end = add(start, mul(direction, reach));
-        let width = 0.042 * 0.68f64.powi(level as i32);
-        let (a, b) = (spin(start, turning), spin(end, turning));
-        let axis = unit(sub(b, a));
-        let span = sub(b, a);
-        let span = (span[0] * span[0] + span[1] * span[1] + span[2] * span[2]).sqrt();
-        scene.add_free(
-            &[
-                [0.0, -width],
-                [span, -width * 0.7],
-                [span, width * 0.7],
-                [0.0, width],
-            ],
-            a,
-            axis,
-            across(axis),
-            if level + 1 == depth { 1.0 } else { 0.0 },
+    let size = 0.9;
+    let layers = if plan.shapes >= 64 { 3 } else { 2 };
+    scene.extrude(&ellipse([0.0, 0.0], size, size, 40), 0.0, layers, 0.06, 0.0);
+
+    let wag = 0.3 * (0.5 + 0.5 * (t * 2.4).sin());
+    let tail = [-0.25, -0.64];
+    let flick = pulse(t, 5.3, 2.0, 0.45);
+    let twitch = if flick < 0.0 {
+        0.0
+    } else {
+        0.2 * (PI * flick).sin() * (3.0 * PI * flick).sin()
+    };
+    let cat: Vec<[f64; 2]> = OCTOCAT
+        .iter()
+        .enumerate()
+        .map(|(index, point)| {
+            let point = match index {
+                2..=7 => {
+                    let d = (point[0] - tail[0]).hypot(point[1] - tail[1]);
+                    swing(*point, tail, wag * (d / 0.45).min(1.0))
+                }
+                17..=19 => swing(*point, [-0.42, 0.36], twitch),
+                _ => *point,
+            };
+            [point[0] * size, point[1] * size]
+        })
+        .collect();
+    scene.add_flat(&cat, -0.03, 2.0);
+
+    let blink = pulse(t, 3.7, 3.45, 0.22);
+    let open = if blink < 0.0 {
+        1.0
+    } else {
+        1.0 - 0.9 * (PI * blink).sin()
+    };
+    let gaze = 0.03 * (t * 0.21).sin();
+    for side in [-1.0, 1.0] {
+        scene.add_flat(
+            &ellipse(
+                [(side * 0.21 + gaze) * size, 0.12 * size],
+                0.07 * size,
+                0.1 * size * open,
+                16,
+            ),
+            -0.05,
+            0.0,
         );
-        if level + 1 < depth {
-            let spread = 0.5 + 0.1 * (t * 1.1 + level as f64 * 0.9).sin();
-            let wind = 0.06 * (t * 1.7 - level as f64 * 0.6).sin();
-            let next_side = turn(side, direction, PI * 0.5);
-            for sign in [-1.0, 1.0] {
-                let heading = unit(turn(direction, side, sign * spread + wind));
-                stack.push((end, heading, next_side, length * 0.78, level + 1));
-            }
-        }
     }
     scene.finish(0.72)
 }

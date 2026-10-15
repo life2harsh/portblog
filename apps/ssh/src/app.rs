@@ -39,7 +39,7 @@ impl Tab {
 }
 
 pub const SOCIALS: [(&str, &str, Design); 3] = [
-    ("GITHUB", "github.com/life2harsh", Design::Fork),
+    ("GITHUB", "github.com/life2harsh", Design::Octocat),
     ("LINKEDIN", "linkedin.com/in/life2harsh", Design::Mesh),
     ("EMAIL", "jhaharsh29@gmail.com", Design::Knot),
 ];

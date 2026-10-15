@@ -603,7 +603,7 @@ fn centered_project_cursor(index: usize) -> i64 {
 }
 
 const SOCIALS: [(&str, &str, Design); 3] = [
-    ("github", "https://github.com/life2harsh", Design::Fork),
+    ("github", "https://github.com/life2harsh", Design::Octocat),
     (
         "linkedin",
         "https://linkedin.com/in/life2harsh",

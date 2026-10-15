@@ -461,7 +461,7 @@ fn generate(design: Design, plan: &Plan) -> Shape {
         Design::C => crate::logos::c(plan),
         Design::Java => crate::logos::java(plan),
         Design::Dart => crate::logos::dart(plan),
-        Design::Fork => crate::connect::fork(plan),
+        Design::Octocat => crate::connect::octocat(plan),
         Design::Mesh => crate::connect::mesh(plan),
         Design::Knot => crate::connect::knot(plan),
     }
