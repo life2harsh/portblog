@@ -13,6 +13,8 @@ const PORTFOLIO: &str = "https://life2harsh.xyz";
 const LIGHT_INK: &str = "#141413";
 const DARK_INK: &str = "#e6e3d9";
 const MODE_KEY: &str = "life2harsh.mode";
+const BODY_ID: &str = "composer-body";
+const PICKER_ID: &str = "composer-media";
 
 fn main() {
     console_log::init_with_level(log::Level::Info).ok();
@@ -638,6 +640,7 @@ fn Composer(slug: Option<String>) -> Element {
     let mut busy = use_signal(|| false);
     let mut armed_delete = use_signal(|| false);
     let mut filled = use_signal(|| slug.is_none());
+    let mut uploading = use_signal(|| 0usize);
 
     let existing = slug.as_ref().and_then(|slug| {
         journal
@@ -734,6 +737,92 @@ fn Composer(slug: Option<String>) -> Element {
         });
     };
 
+    let attach = use_callback(move |files: Vec<web_sys::File>| {
+        let Some(token) = journal.token.peek().clone() else {
+            return;
+        };
+        let total = files.len();
+        let files = files.into_iter().filter(is_media).collect::<Vec<_>>();
+        if files.len() < total {
+            *status.write() = "only images and video can go in a post".into();
+        }
+        if files.is_empty() {
+            return;
+        }
+        *uploading.write() += 1;
+        spawn(async move {
+            let count = files.len();
+            for (index, file) in files.iter().enumerate() {
+                *status.write() = if count > 1 {
+                    format!("uploading {} of {count}…", index + 1)
+                } else {
+                    "uploading…".into()
+                };
+                match api::upload(file, &token).await {
+                    Ok(url) => {
+                        insert_at_cursor(body, &media_snippet(file, &url));
+                        *status.write() = String::new();
+                    }
+                    Err(failure) => {
+                        *status.write() = format!("{}: {failure}", file.name());
+                        break;
+                    }
+                }
+            }
+            *uploading.write() -= 1;
+        });
+    });
+
+    use_hook(move || {
+        let runtime = dioxus::core::Runtime::current();
+        let scope = dioxus::core::current_scope_id();
+        let document = gloo_utils::document();
+        let options = gloo_events::EventListenerOptions::enable_prevent_default();
+        let paste = EventListener::new_with_options(&document, "paste", options, {
+            let runtime = runtime.clone();
+            move |event| {
+                let Some(clip) = event.dyn_ref::<web_sys::ClipboardEvent>() else {
+                    return;
+                };
+                let files = media_files(clip.clipboard_data().and_then(|data| data.files()));
+                if !on_body(event) || files.is_empty() {
+                    return;
+                }
+                event.prevent_default();
+                runtime.in_scope(scope, || attach.call(files));
+            }
+        });
+        let over = EventListener::new_with_options(&document, "dragover", options, |event| {
+            if on_body(event) {
+                event.prevent_default();
+            }
+        });
+        let drop = EventListener::new_with_options(&document, "drop", options, move |event| {
+            let Some(drag) = event.dyn_ref::<web_sys::DragEvent>() else {
+                return;
+            };
+            let files = media_files(drag.data_transfer().and_then(|data| data.files()));
+            if !on_body(event) || files.is_empty() {
+                return;
+            }
+            event.prevent_default();
+            runtime.in_scope(scope, || attach.call(files));
+        });
+        Rc::new([paste, over, drop])
+    });
+
+    let pick = move |_| {
+        let Some(input) = gloo_utils::document()
+            .get_element_by_id(PICKER_ID)
+            .and_then(|element| element.dyn_into::<web_sys::HtmlInputElement>().ok())
+        else {
+            return;
+        };
+        let files = media_files(input.files());
+        input.set_value("");
+        attach.call(files);
+    };
+
     let shortcut = move |event: KeyboardEvent| {
         if event.key() == Key::Enter && (event.modifiers().ctrl() || event.modifiers().meta()) {
             event.prevent_default();
@@ -777,6 +866,7 @@ fn Composer(slug: Option<String>) -> Element {
                     onkeydown: shortcut,
                 }
                 textarea {
+                    id: BODY_ID,
                     class: "composer__body",
                     placeholder: "write in markdown…",
                     value: "{body}",
@@ -791,6 +881,17 @@ fn Composer(slug: Option<String>) -> Element {
                     onkeydown: shortcut,
                 }
                 div { class: "composer__bar",
+                    label { class: "composer__attach",
+                        input {
+                            id: PICKER_ID,
+                            r#type: "file",
+                            accept: "image/png,image/jpeg,image/webp,image/gif,image/avif,video/mp4,video/webm,video/quicktime",
+                            multiple: true,
+                            onchange: pick,
+                        }
+                        "+ media"
+                    }
+                    button { class: "composer__attach", r#type: "button", onclick: move |_| wrap_code(body), "``` code" }
                     label { class: "composer__toggle",
                         input {
                             r#type: "checkbox",
@@ -803,9 +904,9 @@ fn Composer(slug: Option<String>) -> Element {
                     if editing {
                         button { class: "composer__delete", onclick: delete, if armed_delete() { "confirm delete" } else { "delete" } }
                     }
-                    button { class: "composer__save", disabled: busy(), onclick: move |_| save.call(()), "→ save" }
+                    button { class: "composer__save", disabled: busy() || uploading() > 0, onclick: move |_| save.call(()), "→ save" }
                 }
-                p { class: "composer__hint key-hint", "ctrl+enter save  ·  esc leave" }
+                p { class: "composer__hint key-hint", "ctrl+enter save  ·  paste or drop images and video  ·  esc leave" }
             }
             section { class: "composer__preview",
                 p { class: "label", "PREVIEW  {preview.reading_minutes()} MIN READ" }
@@ -817,4 +918,95 @@ fn Composer(slug: Option<String>) -> Element {
             }
         }
     }
+}
+
+fn on_body(event: &web_sys::Event) -> bool {
+    event
+        .target()
+        .and_then(|target| target.dyn_into::<web_sys::Element>().ok())
+        .is_some_and(|element| element.id() == BODY_ID)
+}
+
+fn media_files(list: Option<web_sys::FileList>) -> Vec<web_sys::File> {
+    let Some(list) = list else {
+        return Vec::new();
+    };
+    (0..list.length())
+        .filter_map(|index| list.get(index))
+        .collect()
+}
+
+fn is_media(file: &web_sys::File) -> bool {
+    let kind = file.type_();
+    kind.starts_with("image/") || kind.starts_with("video/")
+}
+
+fn media_snippet(file: &web_sys::File, url: &str) -> String {
+    let name = file.name();
+    let stem = name
+        .rsplit_once('.')
+        .map_or(name.as_str(), |(stem, _)| stem);
+    let alt = stem
+        .chars()
+        .filter(|letter| !matches!(letter, '[' | ']' | '\\'))
+        .collect::<String>();
+    format!("![{}]({url})", alt.trim())
+}
+
+fn body_area() -> Option<web_sys::HtmlTextAreaElement> {
+    gloo_utils::document()
+        .get_element_by_id(BODY_ID)
+        .and_then(|element| element.dyn_into::<web_sys::HtmlTextAreaElement>().ok())
+}
+
+fn selection(text: &str) -> (usize, usize) {
+    let area = body_area();
+    let start = area
+        .as_ref()
+        .and_then(|area| area.selection_start().ok().flatten())
+        .unwrap_or(0) as usize;
+    let end = area
+        .as_ref()
+        .and_then(|area| area.selection_end().ok().flatten())
+        .unwrap_or(0) as usize;
+    match (byte_offset(text, start), byte_offset(text, end)) {
+        (0, 0) => (text.len(), text.len()),
+        range => range,
+    }
+}
+
+fn lead(before: &str) -> &'static str {
+    if before.is_empty() || before.ends_with("\n\n") {
+        ""
+    } else if before.ends_with('\n') {
+        "\n"
+    } else {
+        "\n\n"
+    }
+}
+
+fn insert_at_cursor(mut body: Signal<String>, snippet: &str) {
+    let mut text = body.write();
+    let (_, at) = selection(&text);
+    let lead = lead(&text[..at]);
+    text.insert_str(at, &format!("{lead}{snippet}\n\n"));
+}
+
+fn wrap_code(mut body: Signal<String>) {
+    let mut text = body.write();
+    let (start, end) = selection(&text);
+    let selected = text[start..end].trim_matches('\n').to_string();
+    let lead = lead(&text[..start]);
+    text.replace_range(start..end, &format!("{lead}```\n{selected}\n```\n"));
+}
+
+fn byte_offset(text: &str, units: usize) -> usize {
+    let mut seen = 0;
+    for (index, letter) in text.char_indices() {
+        if seen >= units {
+            return index;
+        }
+        seen += letter.len_utf16();
+    }
+    text.len()
 }

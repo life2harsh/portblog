@@ -62,5 +62,13 @@ features = [
     "KeyboardEvent",
     "EventTarget",
     "Event",
+    "Blob",
+    "File",
+    "FileList",
+    "DataTransfer",
+    "ClipboardEvent",
+    "DragEvent",
+    "HtmlInputElement",
+    "HtmlTextAreaElement",
     "console",
 ]

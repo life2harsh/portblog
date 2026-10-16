@@ -105,7 +105,8 @@ button:disabled { cursor: default; opacity: .45; }
 .prose table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 14px; }
 .prose th, .prose td { padding: .45rem .8rem; border: 1px solid var(--hair); text-align: left; }
 .prose th { font-family: var(--mono); font-weight: 500; }
-.prose img { max-width: 100%; height: auto; border: 1px solid var(--hair); }
+.prose img, .prose video { display: block; max-width: 100%; height: auto; border: 1px solid var(--hair); }
+.prose video { width: 100%; margin: 0 0 1.3rem; background: var(--code-bg); }
 
 .post__pager { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-top: 3.4rem; padding-top: 1.8rem; border-top: 1px solid var(--rule); }
 .pager { display: grid; gap: .45rem; padding: 1rem 1.2rem; border: 1px solid var(--hair); transition: border-color 220ms var(--ease); }
@@ -123,6 +124,9 @@ button:disabled { cursor: default; opacity: .45; }
 .composer__body:focus, .composer__title:focus, .composer__summary:focus, .composer__tags:focus, .gate input:focus { border-color: var(--accent-deep); }
 .composer__tags { padding: .5rem 0; border: 0; border-bottom: 1px solid var(--hair); outline: 0; background: transparent; font-size: 12.5px; }
 .composer__bar { display: flex; align-items: center; gap: 1.2rem; font-size: 12px; }
+.composer__attach { padding: .25rem .6rem; border: 1px solid var(--rule); cursor: pointer; }
+.composer__attach input { display: none; }
+.composer__attach:hover { background: var(--acid); color: var(--acid-ink); }
 .composer__toggle { display: inline-flex; align-items: center; gap: .5rem; cursor: pointer; }
 .composer__toggle input { accent-color: var(--accent-deep); }
 .composer__status { flex: 1; color: var(--muted); }

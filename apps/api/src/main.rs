@@ -23,6 +23,19 @@ async fn main() {
             std::process::exit(1);
         }
     };
+    let media = std::env::var("BLOG_API_MEDIA").map_or_else(
+        |_| {
+            std::path::Path::new(&path)
+                .parent()
+                .unwrap_or(std::path::Path::new("."))
+                .join("media")
+        },
+        std::path::PathBuf::from,
+    );
+    if let Err(cause) = std::fs::create_dir_all(&media) {
+        eprintln!("cannot create media directory {}: {cause}", media.display());
+        std::process::exit(1);
+    }
     let listener = match tokio::net::TcpListener::bind(&bind).await {
         Ok(listener) => listener,
         Err(cause) => {
@@ -30,8 +43,11 @@ async fn main() {
             std::process::exit(1);
         }
     };
-    eprintln!("blog-api listening on {bind}, database {path}");
-    let app = blog_api::router(store, token, &origins);
+    eprintln!(
+        "blog-api listening on {bind}, database {path}, media {}",
+        media.display()
+    );
+    let app = blog_api::router(store, token, &origins, media);
     if let Err(cause) = axum::serve(listener, app)
         .with_graceful_shutdown(shutdown())
         .await

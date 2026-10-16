@@ -11,14 +11,14 @@ path = "src/main.rs"
 [dependencies]
 content = { path = "../../crates/content" }
 axum = "0.8"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time", "fs", "io-util"] }
 rusqlite = { version = "0.37", features = ["bundled"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tower-http = { version = "0.6", features = ["cors", "limit"] }
+tower-http = { version = "0.6", features = ["cors", "limit", "fs", "set-header"] }
 http = "1"
+http-body-util = "0.1"
+tower = { version = "0.5", features = ["util"] }
 
 [dev-dependencies]
 rusqlite = { version = "0.37", features = ["bundled"] }
-tower = { version = "0.5", features = ["util"] }
-http-body-util = "0.1"

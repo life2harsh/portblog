@@ -8,11 +8,45 @@ use tower::ServiceExt;
 
 const TOKEN: &str = "test-token-that-is-long-enough";
 
+fn media() -> std::path::PathBuf {
+    static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    let dir = std::env::temp_dir().join(format!(
+        "blog-api-media-{}-{}",
+        std::process::id(),
+        NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    ));
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
 fn app() -> Router {
+    app_with(media())
+}
+
+fn app_with(media: std::path::PathBuf) -> Router {
     blog_api::router(
         Store::open(":memory:").unwrap(),
         TOKEN.to_string(),
         &["https://blog.life2harsh.xyz".to_string()],
+        media,
+    )
+}
+
+async fn upload(app: &Router, kind: &str, auth: bool, body: Vec<u8>) -> (StatusCode, Value) {
+    let mut request = Request::post("/uploads").header(header::CONTENT_TYPE, kind);
+    if auth {
+        request = request.header(header::AUTHORIZATION, format!("Bearer {TOKEN}"));
+    }
+    let response = app
+        .clone()
+        .oneshot(request.body(Body::from(body)).unwrap())
+        .await
+        .unwrap();
+    let status = response.status();
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    (
+        status,
+        serde_json::from_slice(&bytes).unwrap_or(Value::Null),
     )
 }
 
@@ -256,4 +290,74 @@ fn migrates_databases_without_summary() {
     let reopened = Store::open(path.to_str().unwrap()).unwrap();
     assert!(reopened.get("old", false).is_ok());
     let _ = std::fs::remove_file(&path);
+}
+
+#[tokio::test]
+async fn uploads_are_served_back() {
+    let dir = media();
+    let app = app_with(dir.clone());
+    let picture = b"\x89PNG\r\n\x1a\nnot really a png".to_vec();
+    let (status, value) = upload(&app, "image/png", true, picture.clone()).await;
+    assert_eq!(status, StatusCode::CREATED);
+    let url = value["url"].as_str().unwrap().to_string();
+    assert!(url.starts_with("/media/") && url.ends_with(".png"));
+    let (_, again) = upload(&app, "image/png", true, picture.clone()).await;
+    assert_eq!(again["url"], value["url"]);
+
+    let response = app
+        .clone()
+        .oneshot(Request::get(&url).body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(response.headers()[header::CONTENT_TYPE], "image/png");
+    assert!(
+        response.headers()[header::CACHE_CONTROL]
+            .to_str()
+            .unwrap()
+            .contains("immutable")
+    );
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    assert_eq!(bytes.as_ref(), picture.as_slice());
+    let leftovers = std::fs::read_dir(&dir)
+        .unwrap()
+        .filter(|entry| {
+            entry
+                .as_ref()
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with('.')
+        })
+        .count();
+    assert_eq!(leftovers, 0);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[tokio::test]
+async fn uploads_are_checked() {
+    let dir = media();
+    let app = app_with(dir.clone());
+    let (status, _) = upload(&app, "image/png", false, b"x".to_vec()).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    let (status, _) = upload(&app, "image/svg+xml", true, b"<svg/>".to_vec()).await;
+    assert_eq!(status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
+    let (status, _) = upload(&app, "text/html", true, b"<p>".to_vec()).await;
+    assert_eq!(status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
+    let (status, _) = upload(&app, "image/png", true, Vec::new()).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    let (status, _) = upload(&app, "video/mp4", true, vec![0; blog_api::MEDIA_LIMIT + 1]).await;
+    assert_eq!(status, StatusCode::PAYLOAD_TOO_LARGE);
+    assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 0);
+    let response = app
+        .clone()
+        .oneshot(
+            Request::get("/media/../Cargo.toml")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_ne!(response.status(), StatusCode::OK);
+    let _ = std::fs::remove_dir_all(&dir);
 }

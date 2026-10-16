@@ -7,6 +7,10 @@ pub const BASE: &str = match option_env!("BLOG_API") {
     Some(base) => base,
     None => "/api",
 };
+pub const MEDIA: &str = match option_env!("BLOG_MEDIA") {
+    Some(media) => media,
+    None => "https://blog-api.life2harsh.xyz",
+};
 const TOKEN_KEY: &str = "life2harsh.blog-token";
 
 #[derive(Debug, Clone, PartialEq)]
@@ -105,4 +109,20 @@ pub async fn remove(slug: &str, token: &str) -> Result<(), ApiError> {
     )
     .await
     .map(|_| ())
+}
+
+pub async fn upload(file: &web_sys::File, token: &str) -> Result<String, ApiError> {
+    let request = authed(Request::post(&format!("{MEDIA}/uploads")), Some(token))
+        .header("Content-Type", &file.type_())
+        .body(file.clone())
+        .map_err(|_| ApiError::Rejected("could not read that file".into()))?;
+    let response = checked(request.send().await).await?;
+    let value = response
+        .json::<serde_json::Value>()
+        .await
+        .map_err(|_| ApiError::Unreachable)?;
+    value["url"]
+        .as_str()
+        .map(|url| format!("{MEDIA}{url}"))
+        .ok_or(ApiError::Unreachable)
 }
